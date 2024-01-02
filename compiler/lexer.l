@@ -11,7 +11,7 @@ int yylex();
 %}
 
 NUMBER ([1-9][0-9]*|0)
-SPECIAL_SIGNS [\;\,\(\)\[\]]
+SPECIAL_SIGNS [\;,\(\)\[\]]
 ASSIGNMENT ":="
 ARRAY_PARAMETER "T"
 PIDENTIFIER [_a-z]+
@@ -58,11 +58,12 @@ COMMENT #.*$
 {SPECIAL_SIGNS} { return yytext[0]; }
 {ARRAY_PARAMETER} { return yytext[0]; }
 {PIDENTIFIER} { yylval.pidentifier = new std::string(yytext); return pidentifier; }
-{COMMENT} ;
+{COMMENT} { yylineno--; };
 
 {NUMBER} { yylval.num = std::stoll(yytext); return num; }
 
 
-[ \t\r\n]+ ;
+[ \t\r]+ ;
+[\n]+ {printf("cipa"); };
 .               return ERROR;
 %%

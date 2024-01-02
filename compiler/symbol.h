@@ -1,0 +1,21 @@
+#ifndef CUSTOMCOMPILER_COMPILER_SYMBOL_H_
+#define CUSTOMCOMPILER_COMPILER_SYMBOL_H_
+
+#include <iostream>
+
+enum symbol_type {
+  ARR,
+  VAR,
+  PROC_ARGUMENT,
+  PROC_ARRAY_ARGUMENT
+};
+
+typedef struct symbol {
+  std::string symbol_name;
+  enum symbol_type type;
+  bool initialized;
+  long long int mem_start;
+  unsigned long long int length;
+} Symbol;
+
+#endif  // CUSTOMCOMPILER_COMPILER_SYMBOL_H_

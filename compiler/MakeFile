@@ -1,17 +1,17 @@
 FLAGS = -std=c++17 -O3
 
-main: lexer.o parser.o
+compiler: lexer.o parser.o flow_graph.o symbol_table.o compiler.o
 	$(CXX) $^ -o $@
 	strip $@
 
 %.o: %.cpp
 	$(CXX) $(FLAGS) -c $^
 
-lexer.cpp: lexer.l parser.hh
+lexer.cpp: lexer.l parser.h
 	flex -o $@ $<
 
-parser.cpp parser.hh: parser.y
+parser.cpp parser.h: parser.y
 	bison -Wall -d -o parser.cpp $^
 
 clean:
-	rm -f *.o parser.cpp parser.hpp lexer.cpp main
+	rm -f *.o parser.cpp parser.hpp lexer.cpp compiler
