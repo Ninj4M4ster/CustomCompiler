@@ -110,6 +110,38 @@ DefaultExpression *Compiler::createModuloExpression(VariableContainer *left_var,
   return expr;
 }
 
+Condition *Compiler::createEqualCondition(VariableContainer *left_var, VariableContainer *right_var, int line_number) {
+  Condition* con = new Condition;
+  con->type_ = condition_type::EQ;
+  con->left_var_ = left_var;
+  con->right_var_ = right_var;
+  return con;
+}
+
+Condition *Compiler::createNotEqualCondition(VariableContainer *left_var, VariableContainer *right_var, int line_number) {
+  Condition* con = new Condition;
+  con->type_ = condition_type::NEQ;
+  con->left_var_ = left_var;
+  con->right_var_ = right_var;
+  return con;
+}
+
+Condition *Compiler::createGreaterCondition(VariableContainer *left_var, VariableContainer *right_var, int line_number) {
+  Condition* con = new Condition;
+  con->type_ = condition_type::GT;
+  con->left_var_ = left_var;
+  con->right_var_ = right_var;
+  return con;
+}
+
+Condition *Compiler::createGreaterEqualCondition(VariableContainer *left_var, VariableContainer *right_var, int line_number) {
+  Condition* con = new Condition;
+  con->type_ = condition_type::GE;
+  con->left_var_ = left_var;
+  con->right_var_ = right_var;
+  return con;
+}
+
 VariableContainer* Compiler::getVariable(long long value, int line_number) {
   RValue *r_value_var = new RValue;
   r_value_var->type = variable_type::R_VAL;

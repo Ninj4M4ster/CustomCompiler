@@ -22,6 +22,7 @@ std::shared_ptr<Compiler> compiler;
     long long int num;
     struct variable_container* var_container;
     class DefaultExpression* expr;
+    class Condition* cond;
 }
 
 %token PROCEDURE IS IN END
@@ -44,6 +45,7 @@ std::shared_ptr<Compiler> compiler;
 
 %type <var_container> value identifier
 %type <expr> expression
+%type <cond> condition
 
 %%
 
@@ -110,12 +112,12 @@ expression   : value { $$ = compiler->createDefaultExpression($1, yylineno); }
              | value MOD value { $$ = compiler->createModuloExpression($1, $3, yylineno); }
              ;
 
-condition    : value EQ value {/* pass equaliti condition */}
-             | value NEQ value {/* pass nequality condition */}
-             | value GT value {/* pass greater than condition */}
-             | value LT value {/* pass greater or equal condition with reversed arguments */}
-             | value GE value {/* pass greater or equal condition */}
-             | value LE value {/* pass greater condition with reversed arguments */}
+condition    : value EQ value { $$ = compiler->createEqualCondition($1, $3, yylineno); }
+             | value NEQ value { $$ = compiler->createNotEqualCondition($1, $3, yylineno); }
+             | value GT value { $$ = compiler->createGreaterCondition($1, $3, yylineno); }
+             | value LT value { $$ = compiler->createGreaterCondition($3, $1, yylineno); }
+             | value GE value { $$ = compiler->createGreaterEqualCondition($1, $3, yylineno); }
+             | value LE value { $$ = compiler->createGreaterEqualCondition($3, $1, yylineno); }
              ;
 
 value        : num { $$ = compiler->getVariable($1,  yylineno); }

@@ -58,6 +58,7 @@ enum class expression_type {
   MODULO
 };
 
+// TODO(Jakub Drzewiecki): change expressions to two classes
 class DefaultExpression {
  public:
   VariableContainer* var_;
@@ -99,6 +100,22 @@ class ModuloExpression : public DefaultExpression {
  private:
   expression_type type = expression_type::MODULO;
 };
+
+enum class condition_type {
+  EQ,
+  NEQ,
+  GT,
+  GE
+};
+
+// TODO(Jakub Drzewiecki): Optimize conditions if they are always false/true
+class Condition {
+ public:
+  condition_type type_;
+  VariableContainer* left_var_;
+  VariableContainer* right_var_;
+};
+
 
 typedef struct procedure_argument {
   std::string name;
