@@ -12,9 +12,10 @@
 class SymbolTable {
  public:
   void addSymbol(Symbol new_symbol, int line_number);
+  std::shared_ptr<Symbol> findSymbol(std::string symbol_name);
 
  private:
-  std::vector<Symbol> symbol_table_list_;
+  std::vector<std::shared_ptr<Symbol>> symbol_table_list_;
 };
 
 #endif  // CUSTOMCOMPILER_COMPILER_SYMBOL_TABLE_H_

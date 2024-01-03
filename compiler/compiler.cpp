@@ -18,7 +18,6 @@ void Compiler::declareProcedure() {
   curr_procedure_head_ = ProcedureHead{};
   proc.commands = current_commands_;
   current_commands_.clear();
-  proc.proc_type = procedure_type::PROC;
   proc.symbol_table = current_symbol_table_;
   current_symbol_table_ = std::make_shared<SymbolTable>();
   procedures_.push_back(proc);
@@ -58,6 +57,79 @@ void Compiler::declareProcedureArrayArgument(std::string variable_name, int line
   Symbol new_symbol = createSymbol(variable_name, symbol_type::PROC_ARRAY_ARGUMENT);
   current_symbol_table_->addSymbol(new_symbol, line_number);
   current_procedure_arguments_.push_back({variable_name, symbol_type::ARR});
+}
+
+VariableContainer* Compiler::getVariable(long long value, int line_number) {
+  RValue *r_value_var = new RValue;
+  r_value_var->type = variable_type::R_VAL;
+  r_value_var->value = value;
+  return r_value_var;
+}
+
+VariableContainer *Compiler::getVariable(std::string variable_name, int line_number) {
+  std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(variable_name);
+  if(sym == nullptr) {  // no variable with given name found
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name.");
+  }
+  if(sym->type == symbol_type::ARR ||
+  sym->type == symbol_type::PROC_ARRAY_ARGUMENT) {  // array passed without index argument
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable "
+                                 + variable_name + " is of array type, but no index has been given.");
+  }
+  Variable * var = new Variable;
+  var->type = variable_type::VAR;
+  var->var_name = variable_name;
+  return var;
+}
+
+VariableContainer *Compiler::getVariable(std::string variable_name, long long index, int line_number) {
+  std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(variable_name);
+  if(sym == nullptr) {  // no variable with given name found
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name.");
+  }
+  if(sym->type == symbol_type::VAR ||
+  sym->type == symbol_type::PROC_ARGUMENT) {  // normal variable accessed as array
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable "
+                                 + variable_name + " of decimal type accessed array-like.");
+  }
+  if(sym->type == symbol_type::ARR && (sym->length <= index || index < 0)) {
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": array index out of bounds.");
+  }
+  Array * arr = new Array;
+  arr->type = variable_type::ARR;
+  arr->var_name = variable_name;
+  arr->index = index;
+  return arr;
+}
+
+VariableContainer *Compiler::getVariable(std::string variable_name, std::string index_variable_name, int line_number) {
+  std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(variable_name);
+  if(sym == nullptr) {  // no variable with given name found
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name.");
+  }
+  if(sym->type == symbol_type::VAR ||
+      sym->type == symbol_type::PROC_ARGUMENT) {  // normal variable accessed as array
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable "
+                                 + variable_name + " of decimal type accessed array-like.");
+  }
+  // check var_index symbol
+  VariableIndexedArray * arr = new VariableIndexedArray;
+  arr->type = variable_type::VARIABLE_INDEXED_ARR;
+  arr->var_name = variable_name;
+  arr->index_var_name = index_variable_name;
+  return arr;
+}
+
+VariableContainer *Compiler::checkVariableInitialization(VariableContainer *var, int line_number) {
+  if(var->type == variable_type::R_VAL) {  // rvalue is not an identifier
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": const value is not a variable.");
+  }
+  std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(var->getVariableName());
+  if(!sym->initialized) {
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable "
+                                 + variable_name + " is uninitialized");
+  }
+  return var;
 }
 
 Symbol Compiler::createSymbol(std::string symbol_name, enum symbol_type type) {

@@ -21,6 +21,13 @@ class Compiler {
   void declareProcedureArgument(std::string variable_name, int line_number);
   void declareProcedureArrayArgument(std::string variable_name, int line_number);
 
+  // variables obtaining
+  VariableContainer* getVariable(long long int value, int line_number);
+  VariableContainer* getVariable(std::string variable_name, int line_number);
+  VariableContainer* getVariable(std::string variable_name, long long int index, int line_number);
+  VariableContainer* getVariable(std::string variable_name, std::string index_variable_name, int line_number);
+  VariableContainer* checkVariableInitialization(VariableContainer* var, int line_number);
+
  private:
   // current symbol table used for local declarations, passed to functions objects
   std::shared_ptr<SymbolTable> current_symbol_table_;

@@ -64,6 +64,6 @@ COMMENT #.*$
 
 
 [ \t\r]+ ;
-[\n]+ {printf("cipa"); };
+[\n]+  ;
 .               return ERROR;
 %%

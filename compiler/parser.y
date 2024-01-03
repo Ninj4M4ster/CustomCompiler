@@ -20,6 +20,7 @@ std::shared_ptr<Compiler> compiler;
 %union {
     std::string *pidentifier;
     long long int num;
+    struct variable_container* var_container;
 }
 
 %token PROCEDURE IS IN END
@@ -40,7 +41,16 @@ std::shared_ptr<Compiler> compiler;
 
 %token ERROR
 
+%type <var_container> value identifier
+
 %%
+
+/* Problems:
+ * store code in data structures
+ * transform data structures into flow graph
+ * translate flow graph into result code
+ * add optimizations in translation phase
+ */
 
 program_all  : procedures main {/* generate flow graph, optimize and output code */}
              ;
@@ -58,20 +68,20 @@ commands     : commands command {/* add new command from $2 to $1 */}
              | command {/* create commands list and pass it to $$ */}
              ;
 
-command      : identifier ASSIGNMENT expression';' {/* pass assignment command to $$ */}
+command      : identifier ASSIGNMENT expression';' {/* pass assignment command to $$, initialize identifier */}
              | IF condition THEN commands ELSE commands ENDIF {/* pass if then else nodes to $$ */}
              | IF condition THEN commands ENDIF {/* pass if then nodes to $$ */}
              | WHILE condition DO commands ENDWHILE {/* pass while do nodes to $$ */}
              | REPEAT commands UNTIL condition';' {/* pass repeat until node to $$ */}
              | proc_call';' {/* pass proc call node to $$ */}
-             | READ identifier';' {/* pass read command to $$ */}
+             | READ identifier';' {/* pass read command to $$, initialize identifier */}
              | WRITE value';' {/* pass write command to $$ */}
              ;
 
 proc_head    : pidentifier '('args_decl')' { compiler->declareProcedureHead(*$1, yylineno); }
              ;
 
-proc_call    : pidentifier '('args')' {/* create function object with given arguments to $$ */}
+proc_call    : pidentifier '('args')' {/* create function object with given arguments to $$, check if array indexes are in bounds */}
              ;
 
 declarations : declarations',' pidentifier { compiler->declareVariable(*$3, yylineno); }
@@ -90,7 +100,7 @@ args         : args',' pidentifier {/* pass argument from $3 to args */}
              | pidentifier {/* pass argument to $$ */}
              ;
 
-expression   : value {/* pass const value */ }
+expression   : value {  /* not sure if  */ }
              | value PLUS value {/* pass plus equation */}
              | value MINUS value {/* pass minus equation */}
              | value TIMES value {/* pass multiplication equation */}
@@ -106,13 +116,13 @@ condition    : value EQ value {/* pass equaliti condition */}
              | value LE value {/* pass greater condition with reversed arguments */}
              ;
 
-value        : num {/* pass given value */}
-             | identifier {/* pass value of given variable */}
+value        : num { $$ = compiler->getVariable($1,  yylineno); }
+             | identifier { && = compiler->checkVariableInitialization($1, yylineno); }
              ;
 
-identifier   : pidentifier {/* pass varible object to $$ */}
-             | pidentifier'['num']' {/* pass variable object of array type with given value argument to $$ */}
-             | pidentifier'['pidentifier']' {/* pass variable object of array type with given variable argument to $$ */}
+identifier   : pidentifier { $$ = compiler->getVariable(*$1, yylineno); }
+             | pidentifier'['num']' { $$ = compiler->getVariable(*$1, $3, yylineno); }
+             | pidentifier'['pidentifier']' { $$ = compiler->getVariable(*$1, *$3, yylineno); }
              ;
 
 %%
