@@ -21,6 +21,14 @@ class Compiler {
   void declareProcedureArgument(std::string variable_name, int line_number);
   void declareProcedureArrayArgument(std::string variable_name, int line_number);
 
+  // expressions creation
+  DefaultExpression* createDefaultExpression(VariableContainer* var, int line_number);
+  DefaultExpression* createPlusExpression(VariableContainer* left_var, VariableContainer* right_var, int line_number);
+  DefaultExpression* createMinusExpression(VariableContainer* left_var, VariableContainer* right_var, int line_number);
+  DefaultExpression* createMultiplyExpression(VariableContainer* left_var, VariableContainer* right_var, int line_number);
+  DefaultExpression* createDivideExpression(VariableContainer* left_var, VariableContainer* right_var, int line_number);
+  DefaultExpression* createModuloExpression(VariableContainer* left_var, VariableContainer* right_var, int line_number);
+
   // variables obtaining
   VariableContainer* getVariable(long long int value, int line_number);
   VariableContainer* getVariable(std::string variable_name, int line_number);

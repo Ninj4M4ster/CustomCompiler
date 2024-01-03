@@ -59,6 +59,57 @@ void Compiler::declareProcedureArrayArgument(std::string variable_name, int line
   current_procedure_arguments_.push_back({variable_name, symbol_type::ARR});
 }
 
+DefaultExpression *Compiler::createDefaultExpression(VariableContainer *var, int line_number) {
+  DefaultExpression* expr = new DefaultExpression;
+  expr->var_ = var;
+  return expr;
+}
+
+DefaultExpression *Compiler::createPlusExpression(VariableContainer *left_var,
+                                                  VariableContainer *right_var,
+                                                  int line_number) {
+  PlusExpression* expr = new PlusExpression;
+  expr->var_ = left_var;
+  expr->right_var_ = right_var;
+  return expr;
+}
+
+DefaultExpression *Compiler::createMinusExpression(VariableContainer *left_var,
+                                                   VariableContainer *right_var,
+                                                   int line_number) {
+  MinusExpression* expr = new MinusExpression;
+  expr->var_ = left_var;
+  expr->right_var_ = right_var;
+  return expr;
+}
+
+DefaultExpression *Compiler::createMultiplyExpression(VariableContainer *left_var,
+                                                      VariableContainer *right_var,
+                                                      int line_number) {
+  MultiplyExpression* expr = new MultiplyExpression;
+  expr->var_ = left_var;
+  expr->right_var_ = right_var;
+  return expr;
+}
+
+DefaultExpression *Compiler::createDivideExpression(VariableContainer *left_var,
+                                                    VariableContainer *right_var,
+                                                    int line_number) {
+  DivideExpression* expr = new DivideExpression;
+  expr->var_ = left_var;
+  expr->right_var_ = right_var;
+  return expr;
+}
+
+DefaultExpression *Compiler::createModuloExpression(VariableContainer *left_var,
+                                                    VariableContainer *right_var,
+                                                    int line_number) {
+  ModuloExpression* expr = new ModuloExpression;
+  expr->var_ = left_var;
+  expr->right_var_ = right_var;
+  return expr;
+}
+
 VariableContainer* Compiler::getVariable(long long value, int line_number) {
   RValue *r_value_var = new RValue;
   r_value_var->type = variable_type::R_VAL;
@@ -127,7 +178,7 @@ VariableContainer *Compiler::checkVariableInitialization(VariableContainer *var,
   std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(var->getVariableName());
   if(!sym->initialized) {
     throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable "
-                                 + variable_name + " is uninitialized");
+                                 + var->getVariableName() + " is uninitialized");
   }
   return var;
 }

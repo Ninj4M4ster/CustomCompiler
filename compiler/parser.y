@@ -21,6 +21,7 @@ std::shared_ptr<Compiler> compiler;
     std::string *pidentifier;
     long long int num;
     struct variable_container* var_container;
+    class DefaultExpression* expr;
 }
 
 %token PROCEDURE IS IN END
@@ -42,6 +43,7 @@ std::shared_ptr<Compiler> compiler;
 %token ERROR
 
 %type <var_container> value identifier
+%type <expr> expression
 
 %%
 
@@ -100,12 +102,12 @@ args         : args',' pidentifier {/* pass argument from $3 to args */}
              | pidentifier {/* pass argument to $$ */}
              ;
 
-expression   : value {  /* not sure if  */ }
-             | value PLUS value {/* pass plus equation */}
-             | value MINUS value {/* pass minus equation */}
-             | value TIMES value {/* pass multiplication equation */}
-             | value DIV value {/* pass division equation */}
-             | value MOD value {/* pass modulo equation */}
+expression   : value { $$ = compiler->createDefaultExpression($1, yylineno); }
+             | value PLUS value { $$ = compiler->createPlusExpression($1, $3, yylineno); }
+             | value MINUS value { $$ = compiler->createMinusExpression($1, $3, yylineno); }
+             | value TIMES value { $$ = compiler->createMultiplyExpression($1, $3, yylineno); }
+             | value DIV value { $$ = compiler->createDivideExpression($1, $3, yylineno); }
+             | value MOD value { $$ = compiler->createModuloExpression($1, $3, yylineno); }
              ;
 
 condition    : value EQ value {/* pass equaliti condition */}
@@ -117,7 +119,7 @@ condition    : value EQ value {/* pass equaliti condition */}
              ;
 
 value        : num { $$ = compiler->getVariable($1,  yylineno); }
-             | identifier { && = compiler->checkVariableInitialization($1, yylineno); }
+             | identifier { $$ = compiler->checkVariableInitialization($1, yylineno); }
              ;
 
 identifier   : pidentifier { $$ = compiler->getVariable(*$1, yylineno); }

@@ -15,11 +15,16 @@ enum class variable_type {
 
 typedef struct variable_container {
   variable_type type;
-  virtual std::string getVariableName();
+  virtual std::string getVariableName() {
+    return "";
+  };
 } VariableContainer;
 
 typedef struct variable : public VariableContainer {
   std::string var_name;
+  std::string getVariableName() override {
+    return var_name;
+  };
 } Variable;
 
 typedef struct r_value : public VariableContainer {
@@ -29,12 +34,71 @@ typedef struct r_value : public VariableContainer {
 typedef struct array : public VariableContainer {
   std::string var_name;
   long long int index;
+  std::string getVariableName() override {
+    return var_name;
+  };
 } Array;
 
 typedef struct variable_indexed_array : public VariableContainer {
   std::string var_name;
   std::string index_var_name;
+
+  std::string getVariableName() override {
+    return var_name;
+  };
 } VariableIndexedArray;
+
+
+enum class expression_type {
+  DEFAULT,
+  PLUS,
+  MINUS,
+  MULTIPLY,
+  DIVIDE,
+  MODULO
+};
+
+class DefaultExpression {
+ public:
+  VariableContainer* var_;
+ private:
+  expression_type type = expression_type::DEFAULT;
+};
+
+class PlusExpression : public DefaultExpression {
+ public:
+  VariableContainer* right_var_;
+ private:
+  expression_type type = expression_type::PLUS;
+};
+
+class MinusExpression : public DefaultExpression {
+ public:
+  VariableContainer* right_var_;
+ private:
+  expression_type type = expression_type::MINUS;
+};
+
+class MultiplyExpression : public DefaultExpression {
+ public:
+  VariableContainer* right_var_;
+ private:
+  expression_type type = expression_type::MULTIPLY;
+};
+
+class DivideExpression : public DefaultExpression {
+ public:
+  VariableContainer* right_var_;
+ private:
+  expression_type type = expression_type::DIVIDE;
+};
+
+class ModuloExpression : public DefaultExpression {
+ public:
+  VariableContainer* right_var_;
+ private:
+  expression_type type = expression_type::MODULO;
+};
 
 typedef struct procedure_argument {
   std::string name;
