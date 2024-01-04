@@ -116,10 +116,12 @@ class Condition {
   VariableContainer* right_var_;
 };
 
-
+// TODO(Jakub Drzewiecki): Add system for checking if argument is not used uninitialized illegally in procedure
+// TODO(Jakub Drzewiecki): To pass args by reference, it is needed to pass memory addresses of the arguments
 typedef struct procedure_argument {
   std::string name;
   enum symbol_type type;
+  bool needs_initialization_before_call;
 } ProcedureArgument;
 
 typedef struct procedure_head {
@@ -127,7 +129,7 @@ typedef struct procedure_head {
   std::vector<ProcedureArgument> arguments;
 } ProcedureHead;
 
-typedef struct command {
+typedef struct Command {
 
 } Command;
 
@@ -137,4 +139,4 @@ typedef struct procedure {
   std::vector<Command> commands;
 } Procedure;
 
-#endif //CUSTOMCOMPILER_COMPILER_DATA_H_
+#endif  // CUSTOMCOMPILER_COMPILER_DATA_H_

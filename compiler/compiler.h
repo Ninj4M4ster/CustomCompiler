@@ -13,6 +13,9 @@ class Compiler {
   void declareProcedure();
   void declareProcedureHead(std::string procedure_name, int line_number);
 
+  // main declaration
+  void declareMain();
+
   // variables declarations
   void declareVariable(std::string variable_name, int line_number);
   void declareVariable(std::string variable_name, long long int array_size, int line_number);
@@ -20,6 +23,10 @@ class Compiler {
   // procedures arguments declarations
   void declareProcedureArgument(std::string variable_name, int line_number);
   void declareProcedureArrayArgument(std::string variable_name, int line_number);
+
+  // procedures calls
+  void addProcedureCallArgument(std::string variable_name, int line_number);
+  void createProcedureCall(std::string procedure_name, int line_number);
 
   // expressions creation
   // TODO(Jakub Drzewiecki): Line number might not be needed
@@ -58,6 +65,11 @@ class Compiler {
   std::vector<ProcedureArgument> current_procedure_arguments_;
   std::vector<Command> current_commands_;
   ProcedureHead curr_procedure_head_;
+
+  // data and methods concerning procedure calls
+  std::vector<ProcedureArgument> current_procedure_call_arguments_;
+  ProcedureHead current_procedure_call_;
+  void markProcedureArgumentNeedsInitialization(std::string arg_name);
 
   std::shared_ptr<FlowGraph> flow_graph_;
 

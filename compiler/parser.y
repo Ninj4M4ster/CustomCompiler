@@ -4,6 +4,7 @@
 */
 %code requires {
 #include <iostream>
+#include <vector>
 }
 
 %{
@@ -23,6 +24,8 @@ std::shared_ptr<Compiler> compiler;
     struct variable_container* var_container;
     class DefaultExpression* expr;
     class Condition* cond;
+    struct Command* comm;
+    std::vector<struct Command*>* comm_list;
 }
 
 %token PROCEDURE IS IN END
@@ -46,6 +49,8 @@ std::shared_ptr<Compiler> compiler;
 %type <var_container> value identifier
 %type <expr> expression
 %type <cond> condition
+%type <comm> command
+%type <comm_list> commands
 
 %%
 
@@ -64,8 +69,8 @@ procedures   : procedures PROCEDURE proc_head IS declarations IN commands END { 
              | %empty
              ;
 
-main         : PROGRAM IS declarations IN commands END {/* generate main function and pass it to $$ */}
-             | PROGRAM IS IN commands END {/* generate main function and pass it to $$ */}
+main         : PROGRAM IS declarations IN commands END { compiler->declareMain(); }
+             | PROGRAM IS IN commands END { compiler->declareMain(); }
              ;
 
 commands     : commands command {/* add new command from $2 to $1 */}
@@ -85,7 +90,7 @@ command      : identifier ASSIGNMENT expression';' {/* pass assignment command t
 proc_head    : pidentifier '('args_decl')' { compiler->declareProcedureHead(*$1, yylineno); }
              ;
 
-proc_call    : pidentifier '('args')' {/* create function object with given arguments to $$, check if array indexes are in bounds */}
+proc_call    : pidentifier '('args')' { compiler->createProcedureCall(*$1, yylineno); }
              ;
 
 declarations : declarations',' pidentifier { compiler->declareVariable(*$3, yylineno); }
@@ -100,8 +105,8 @@ args_decl    : args_decl',' pidentifier { compiler->declareProcedureArgument(*$3
              | 'T' pidentifier { compiler->declareProcedureArrayArgument(*$2, yylineno); }
              ;
 
-args         : args',' pidentifier {/* pass argument from $3 to args */}
-             | pidentifier {/* pass argument to $$ */}
+args         : args',' pidentifier { compiler->addProcedureCallArgument(*$3, yylineno); }
+             | pidentifier { compiler->addProcedureCallArgument(*$1, yylineno); }
              ;
 
 expression   : value { $$ = compiler->createDefaultExpression($1, yylineno); }

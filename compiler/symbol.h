@@ -2,6 +2,7 @@
 #define CUSTOMCOMPILER_COMPILER_SYMBOL_H_
 
 #include <iostream>
+#include <vector>
 
 enum symbol_type {
   ARR,

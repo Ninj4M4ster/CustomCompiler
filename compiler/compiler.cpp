@@ -23,6 +23,15 @@ void Compiler::declareProcedure() {
   procedures_.push_back(proc);
 }
 
+void Compiler::declareMain() {
+  Procedure proc;
+  proc.symbol_table = current_symbol_table_;
+  current_symbol_table_ = std::make_shared<SymbolTable>();
+  proc.commands = current_commands_;
+  current_commands_.clear();
+  main_ = proc;
+}
+
 void Compiler::declareProcedureHead(std::string procedure_name, int line_number) {
   for(auto & proc : procedures_) {  // check if procedure name is available
     if(proc.head.name == procedure_name) {
@@ -57,6 +66,64 @@ void Compiler::declareProcedureArrayArgument(std::string variable_name, int line
   Symbol new_symbol = createSymbol(variable_name, symbol_type::PROC_ARRAY_ARGUMENT);
   current_symbol_table_->addSymbol(new_symbol, line_number);
   current_procedure_arguments_.push_back({variable_name, symbol_type::ARR});
+}
+
+void Compiler::addProcedureCallArgument(std::string variable_name, int line_number) {
+  std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(variable_name);
+  if(sym == nullptr) {  // no symbol found
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name.");
+  }
+  ProcedureArgument arg;
+  arg.name = variable_name;
+  arg.type = sym->type;
+  arg.needs_initialization_before_call = sym->initialized;
+  current_procedure_call_arguments_.push_back(arg);
+}
+
+void Compiler::createProcedureCall(std::string procedure_name, int line_number) {
+  if(procedure_name == curr_procedure_head_.name) {
+    throw std::runtime_error("Error at line " + std::to_string(line_number) +
+    ": recursive procedure call is not allowed.");
+  }
+  // check if called procedure is already declared
+  bool proc_found = false;
+  Procedure called_procedure;
+  for(auto & proc : procedures_) {
+    if(proc.head.name == procedure_name) {
+      proc_found = true;
+      called_procedure = proc;
+    }
+  }
+  if(!proc_found) {
+    throw std::runtime_error("Error at line " + std::to_string(line_number) +
+    ": procedure " + procedure_name + " is not declared.");
+  }
+  // check arguments of called procedure
+  if(current_procedure_call_arguments_.size() != called_procedure.head.arguments.size()) {
+    throw std::runtime_error("Error at line " + std::to_string(line_number) +
+        ": procedure " + procedure_name + " expects " + std::to_string(called_procedure.head.arguments.size()) +
+        " arguments, but " + std::to_string(current_procedure_call_arguments_.size()) + " were passed.");
+  }
+  for(int i = 0; i < current_procedure_call_arguments_.size(); i++) {
+    auto proc_arg_type = current_procedure_call_arguments_.at(i).type;
+    auto proc_decl_arg_type = called_procedure.head.arguments.at(i).type;
+    if(proc_decl_arg_type == symbol_type::VAR &&
+        (proc_arg_type == symbol_type::ARR || proc_arg_type == symbol_type::PROC_ARRAY_ARGUMENT)) {
+      throw std::runtime_error("Error at line " + std::to_string(line_number) +
+          ": procedure " + procedure_name + " expects variable, but array argument was passed.");
+    }
+    if(proc_decl_arg_type == symbol_type::ARR &&
+        (proc_arg_type == symbol_type::VAR || proc_arg_type == symbol_type::PROC_ARGUMENT)) {
+      throw std::runtime_error("Error at line " + std::to_string(line_number) +
+          ": procedure " + procedure_name + " expects array, but variable argument was passed.");
+    }
+    // TODO(Jakub Drzewiecki): Implement procedure call arguments initialization check here
+  }
+  ProcedureHead called_proc;
+  called_proc.name = procedure_name;
+  called_proc.arguments = current_procedure_call_arguments_;
+  current_procedure_call_arguments_.clear();
+  current_procedure_call_ = called_proc;
 }
 
 DefaultExpression *Compiler::createDefaultExpression(VariableContainer *var, int line_number) {
@@ -178,6 +245,7 @@ VariableContainer *Compiler::getVariable(std::string variable_name, long long in
   if(sym->type == symbol_type::ARR && (sym->length <= index || index < 0)) {
     throw std::runtime_error("Error at line " + std::to_string(line_number) + ": array index out of bounds.");
   }
+  // TODO(Jakub Drzewiecki): Add checking procedure array arguments bounds
   Array * arr = new Array;
   arr->type = variable_type::ARR;
   arr->var_name = variable_name;
@@ -188,7 +256,7 @@ VariableContainer *Compiler::getVariable(std::string variable_name, long long in
 VariableContainer *Compiler::getVariable(std::string variable_name, std::string index_variable_name, int line_number) {
   std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(variable_name);
   if(sym == nullptr) {  // no variable with given name found
-    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name.");
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name - " + variable_name);
   }
   if(sym->type == symbol_type::VAR ||
       sym->type == symbol_type::PROC_ARGUMENT) {  // normal variable accessed as array
@@ -196,6 +264,20 @@ VariableContainer *Compiler::getVariable(std::string variable_name, std::string 
                                  + variable_name + " of decimal type accessed array-like.");
   }
   // check var_index symbol
+  sym = current_symbol_table_->findSymbol(index_variable_name);
+  if(sym == nullptr) {  // no variable with given name found
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name - " + index_variable_name);
+  }
+  if(sym->type == symbol_type::ARR || sym->type == symbol_type::PROC_ARRAY_ARGUMENT) {  // array as index
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": array index cannot be an array.");
+  }
+  if(sym->type == symbol_type::VAR && !sym->initialized) {  // index variable not initialized
+    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable " +
+    variable_name + " used as index is not initialized.");
+  }
+  if(sym->type == symbol_type::PROC_ARGUMENT && !sym->initialized) {
+    markProcedureArgumentNeedsInitialization(variable_name);
+  }
   VariableIndexedArray * arr = new VariableIndexedArray;
   arr->type = variable_type::VARIABLE_INDEXED_ARR;
   arr->var_name = variable_name;
@@ -208,9 +290,11 @@ VariableContainer *Compiler::checkVariableInitialization(VariableContainer *var,
     throw std::runtime_error("Error at line " + std::to_string(line_number) + ": const value is not a variable.");
   }
   std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(var->getVariableName());
-  if(!sym->initialized) {
+  if(sym->type == symbol_type::VAR && !sym->initialized) {
     throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable "
                                  + var->getVariableName() + " is uninitialized");
+  } else if(sym->type == symbol_type::PROC_ARGUMENT) {
+    markProcedureArgumentNeedsInitialization(var->getVariableName());
   }
   return var;
 }
@@ -239,4 +323,8 @@ void Compiler::setSymbolBounds(Symbol & symbol, long long mem_len, int line_numb
     throw std::runtime_error("Error at line " + std::to_string(line_number)
     + ": memory capacity reached.");
   }
+}
+
+void Compiler::markProcedureArgumentNeedsInitialization(std::string arg_name) {
+
 }
