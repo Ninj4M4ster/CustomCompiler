@@ -1,6 +1,6 @@
 # błąd: niezdefiniowana procedura pb w linii 13
 PROCEDURE pa(T a, b) IS
- c[5], a
+ c[5], d
 IN
   d:=b;
   a[d]:=c[d]+a[b];

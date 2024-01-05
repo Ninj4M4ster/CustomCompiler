@@ -58,7 +58,7 @@ COMMENT #.*$
 {SPECIAL_SIGNS} { return yytext[0]; }
 {ARRAY_PARAMETER} { return yytext[0]; }
 {PIDENTIFIER} { yylval.pidentifier = new std::string(yytext); return pidentifier; }
-{COMMENT} { yylineno--; };
+{COMMENT} ;
 
 {NUMBER} { yylval.num = std::stoll(yytext); return num; }
 

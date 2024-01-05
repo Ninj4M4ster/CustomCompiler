@@ -129,14 +129,72 @@ typedef struct procedure_head {
   std::vector<ProcedureArgument> arguments;
 } ProcedureHead;
 
-typedef struct Command {
+enum class command_type {
+  ASSIGNMENT,
+  IF_ELSE,
+  WHILE,
+  REPEAT,
+  PROC_CALL,
+  READ,
+  WRITE
+};
 
-} Command;
+class Command {
+ public:
+  enum command_type type;
+};
+
+class AssignmentCommand : public Command {
+ public:
+  VariableContainer left_var_;
+  DefaultExpression expression_;
+  enum command_type type = command_type::ASSIGNMENT;
+};
+
+class IfElseCommand : public Command {
+ public:
+  Condition cond_;
+  std::vector<Command*> then_commands_;
+  std::vector<Command*> else_commands_;
+  enum command_type type = command_type::IF_ELSE;
+};
+
+class WhileCommand : public Command {
+ public:
+  Condition cond_;
+  std::vector<Command*> commands_;
+  enum command_type type = command_type::WHILE;
+};
+
+class RepeatUntilCommand : public Command {
+ public:
+  Condition cond_;
+  std::vector<Command*> commands_;
+  enum command_type type = command_type::REPEAT;
+};
+
+class ProcedureCallCommand : public Command {
+ public:
+  ProcedureHead proc_call_;
+  enum command_type type = command_type::PROC_CALL;
+};
+
+class ReadCommand : public Command {
+ public:
+  VariableContainer var_;
+  enum command_type type = command_type::READ;
+};
+
+class WriteCommand : public Command {
+ public:
+  VariableContainer written_value_;
+  enum command_type type = command_type::WRITE;
+};
 
 typedef struct procedure {
   ProcedureHead head;
   std::shared_ptr<SymbolTable> symbol_table;
-  std::vector<Command> commands;
+  std::vector<Command*> commands;
 } Procedure;
 
 #endif  // CUSTOMCOMPILER_COMPILER_DATA_H_

@@ -10,11 +10,11 @@ class Compiler {
   void setOutputFileName(std::string f_name);
 
   // procedures declarations
-  void declareProcedure();
+  void declareProcedure(std::vector<Command*> commands);
   void declareProcedureHead(std::string procedure_name, int line_number);
 
   // main declaration
-  void declareMain();
+  void declareMain(std::vector<Command*> commands);
 
   // variables declarations
   void declareVariable(std::string variable_name, int line_number);
@@ -27,6 +27,19 @@ class Compiler {
   // procedures calls
   void addProcedureCallArgument(std::string variable_name, int line_number);
   void createProcedureCall(std::string procedure_name, int line_number);
+
+  // commands creation
+  Command* createAssignmentCommand(VariableContainer* left_var, DefaultExpression* expr, int line_number);
+  Command* createIfThenElseBlock(Condition* cond,
+                                 std::vector<Command*> then_commands,
+                                 std::vector<Command*> else_commands,
+                                 int line_number);
+  Command* createIfThenElseBlock(Condition* cond, std::vector<Command*> then_commands, int line_number);
+  Command* createWhileBlock(Condition* cond, std::vector<Command*> commands, int line_number);
+  Command* createRepeatUntilBlock(Condition* cond, std::vector<Command*> commands, int line_number);
+  Command* createProcedureCallCommand(int line_number);
+  Command* createReadCommand(VariableContainer* var, int line_number);
+  Command* createWriteCommand(VariableContainer* var, int line_number);
 
   // expressions creation
   // TODO(Jakub Drzewiecki): Line number might not be needed
@@ -63,13 +76,13 @@ class Compiler {
 
   // temporary data used in procedures/main function declaration
   std::vector<ProcedureArgument> current_procedure_arguments_;
-  std::vector<Command> current_commands_;
   ProcedureHead curr_procedure_head_;
 
   // data and methods concerning procedure calls
   std::vector<ProcedureArgument> current_procedure_call_arguments_;
   ProcedureHead current_procedure_call_;
   void markProcedureArgumentNeedsInitialization(std::string arg_name);
+  bool isProcedureArgumentMarked(std::string arg_name);
 
   std::shared_ptr<FlowGraph> flow_graph_;
 

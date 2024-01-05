@@ -12,23 +12,21 @@ void Compiler::setOutputFileName(std::string f_name) {
   output_file_name_ = f_name;
 }
 
-void Compiler::declareProcedure() {
+void Compiler::declareProcedure(std::vector<Command*> commands) {
   Procedure proc;
   proc.head = curr_procedure_head_;
   curr_procedure_head_ = ProcedureHead{};
-  proc.commands = current_commands_;
-  current_commands_.clear();
+  proc.commands = commands;
   proc.symbol_table = current_symbol_table_;
   current_symbol_table_ = std::make_shared<SymbolTable>();
   procedures_.push_back(proc);
 }
 
-void Compiler::declareMain() {
+void Compiler::declareMain(std::vector<Command*> commands) {
   Procedure proc;
   proc.symbol_table = current_symbol_table_;
   current_symbol_table_ = std::make_shared<SymbolTable>();
-  proc.commands = current_commands_;
-  current_commands_.clear();
+  proc.commands = commands;
   main_ = proc;
 }
 
@@ -107,6 +105,10 @@ void Compiler::createProcedureCall(std::string procedure_name, int line_number) 
   for(int i = 0; i < current_procedure_call_arguments_.size(); i++) {
     auto proc_arg_type = current_procedure_call_arguments_.at(i).type;
     auto proc_decl_arg_type = called_procedure.head.arguments.at(i).type;
+    bool arg_initialization_flag = current_procedure_call_arguments_.at(i).needs_initialization_before_call;
+    bool decl_arg_initialization_flag = called_procedure.head.arguments.at(i).needs_initialization_before_call;
+    auto proc_arg_sym = current_symbol_table_->findSymbol(current_procedure_call_arguments_.at(i).name);
+    auto proc_decl_arg_sym = called_procedure.symbol_table->findSymbol(called_procedure.head.arguments.at(i).name);
     if(proc_decl_arg_type == symbol_type::VAR &&
         (proc_arg_type == symbol_type::ARR || proc_arg_type == symbol_type::PROC_ARRAY_ARGUMENT)) {
       throw std::runtime_error("Error at line " + std::to_string(line_number) +
@@ -117,13 +119,92 @@ void Compiler::createProcedureCall(std::string procedure_name, int line_number) 
       throw std::runtime_error("Error at line " + std::to_string(line_number) +
           ": procedure " + procedure_name + " expects array, but variable argument was passed.");
     }
-    // TODO(Jakub Drzewiecki): Implement procedure call arguments initialization check here
+    if(proc_arg_type == symbol_type::VAR && decl_arg_initialization_flag && !arg_initialization_flag) {
+      throw std::runtime_error("Error at line " + std::to_string(line_number) +
+          ": procedure " + procedure_name + " expects initialized argument (" +
+          called_procedure.head.arguments.at(i).name + "), but uninitialized variable has been given.");
+    }
+    if(proc_arg_type == symbol_type::PROC_ARGUMENT && decl_arg_initialization_flag && !arg_initialization_flag) {
+      current_procedure_call_arguments_.at(i).needs_initialization_before_call = true;
+    }
+    if(proc_decl_arg_sym->initialized) {
+      proc_arg_sym->initialized = true;
+    }
   }
   ProcedureHead called_proc;
   called_proc.name = procedure_name;
   called_proc.arguments = current_procedure_call_arguments_;
   current_procedure_call_arguments_.clear();
   current_procedure_call_ = called_proc;
+}
+
+Command *Compiler::createAssignmentCommand(VariableContainer *left_var, DefaultExpression *expr, int line_number) {
+  auto sym = current_symbol_table_->findSymbol(left_var->getVariableName());
+  if(sym->type == symbol_type::PROC_ARGUMENT && !isProcedureArgumentMarked(left_var->getVariableName())) {
+    sym->initialized = true;
+  } else if(sym->type == symbol_type::VAR) {
+    sym->initialized = true;
+  }
+  AssignmentCommand* comm = new AssignmentCommand;
+  comm->expression_ = *expr;
+  comm->left_var_ = *left_var;
+  return comm;
+}
+
+Command *Compiler::createIfThenElseBlock(Condition *cond,
+                                         std::vector<Command *> then_commands,
+                                         std::vector<Command *> else_commands,
+                                         int line_number) {
+  IfElseCommand* comm = new IfElseCommand;
+  comm->cond_ = *cond;
+  comm->then_commands_ = then_commands;
+  comm->else_commands_ = else_commands;
+  return comm;
+}
+
+Command *Compiler::createIfThenElseBlock(Condition *cond, std::vector<Command *> then_commands, int line_number) {
+  IfElseCommand* comm = new IfElseCommand;
+  comm->cond_ = *cond;
+  comm->then_commands_ = then_commands;
+  return comm;
+}
+
+Command *Compiler::createWhileBlock(Condition *cond, std::vector<Command *> commands, int line_number) {
+  WhileCommand* comm = new WhileCommand;
+  comm->cond_ = *cond;
+  comm->commands_ = commands;
+  return comm;
+}
+
+Command *Compiler::createRepeatUntilBlock(Condition *cond, std::vector<Command *> commands, int line_number) {
+  RepeatUntilCommand* comm = new RepeatUntilCommand;
+  comm->cond_ = *cond;
+  comm->commands_ = commands;
+  return comm;
+}
+
+Command *Compiler::createProcedureCallCommand(int line_number) {
+  ProcedureCallCommand* comm = new ProcedureCallCommand;
+  comm->proc_call_ = current_procedure_call_;
+  return comm;
+}
+
+Command *Compiler::createReadCommand(VariableContainer *var, int line_number) {
+  auto sym = current_symbol_table_->findSymbol(var->getVariableName());
+  if(sym->type == symbol_type::PROC_ARGUMENT && !isProcedureArgumentMarked(var->getVariableName())) {
+    sym->initialized = true;
+  } else if(sym->type == symbol_type::VAR) {
+    sym->initialized = true;
+  }
+  ReadCommand* comm = new ReadCommand;
+  comm->var_ = *var;
+  return comm;
+}
+
+Command *Compiler::createWriteCommand(VariableContainer *var, int line_number) {
+  WriteCommand* comm = new WriteCommand;
+  comm->written_value_ = *var;
+  return comm;
 }
 
 DefaultExpression *Compiler::createDefaultExpression(VariableContainer *var, int line_number) {
@@ -273,7 +354,7 @@ VariableContainer *Compiler::getVariable(std::string variable_name, std::string 
   }
   if(sym->type == symbol_type::VAR && !sym->initialized) {  // index variable not initialized
     throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable " +
-    variable_name + " used as index is not initialized.");
+        sym->symbol_name + " used as index is not initialized.");
   }
   if(sym->type == symbol_type::PROC_ARGUMENT && !sym->initialized) {
     markProcedureArgumentNeedsInitialization(variable_name);
@@ -326,5 +407,19 @@ void Compiler::setSymbolBounds(Symbol & symbol, long long mem_len, int line_numb
 }
 
 void Compiler::markProcedureArgumentNeedsInitialization(std::string arg_name) {
+  for(auto & arg : current_procedure_arguments_) {
+    if(arg.name == arg_name) {
+      arg.needs_initialization_before_call = true;
+      return;
+    }
+  }
+}
 
+bool Compiler::isProcedureArgumentMarked(std::string arg_name) {
+  for(auto & arg : current_procedure_arguments_) {
+    if(arg.name == arg_name) {
+      return arg.needs_initialization_before_call;
+    }
+  }
+  return false;
 }

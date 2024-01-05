@@ -24,8 +24,8 @@ std::shared_ptr<Compiler> compiler;
     struct variable_container* var_container;
     class DefaultExpression* expr;
     class Condition* cond;
-    struct Command* comm;
-    std::vector<struct Command*>* comm_list;
+    class Command* comm;
+    std::vector<Command*>* comm_list;
 }
 
 %token PROCEDURE IS IN END
@@ -64,27 +64,27 @@ std::shared_ptr<Compiler> compiler;
 program_all  : procedures main {/* generate flow graph, optimize and output code */}
              ;
 
-procedures   : procedures PROCEDURE proc_head IS declarations IN commands END { compiler->declareProcedure(); }
-             | procedures PROCEDURE proc_head IS IN commands END { compiler->declareProcedure(); }
+procedures   : procedures PROCEDURE proc_head IS declarations IN commands END { compiler->declareProcedure(*$7); }
+             | procedures PROCEDURE proc_head IS IN commands END { compiler->declareProcedure(*$6); }
              | %empty
              ;
 
-main         : PROGRAM IS declarations IN commands END { compiler->declareMain(); }
-             | PROGRAM IS IN commands END { compiler->declareMain(); }
+main         : PROGRAM IS declarations IN commands END { compiler->declareMain(*$5); }
+             | PROGRAM IS IN commands END { compiler->declareMain(*$4); }
              ;
 
-commands     : commands command {/* add new command from $2 to $1 */}
-             | command {/* create commands list and pass it to $$ */}
+commands     : commands command { $1->push_back($2); }
+             | command { $$ = new std::vector<Command*>(); $$->push_back($1); }
              ;
 
-command      : identifier ASSIGNMENT expression';' {/* pass assignment command to $$, initialize identifier */}
-             | IF condition THEN commands ELSE commands ENDIF {/* pass if then else nodes to $$ */}
-             | IF condition THEN commands ENDIF {/* pass if then nodes to $$ */}
-             | WHILE condition DO commands ENDWHILE {/* pass while do nodes to $$ */}
-             | REPEAT commands UNTIL condition';' {/* pass repeat until node to $$ */}
-             | proc_call';' {/* pass proc call node to $$ */}
-             | READ identifier';' {/* pass read command to $$, initialize identifier */}
-             | WRITE value';' {/* pass write command to $$ */}
+command      : identifier ASSIGNMENT expression';' { $$ = compiler->createAssignmentCommand($1, $3, yylineno);}
+             | IF condition THEN commands ELSE commands ENDIF { $$ = compiler->createIfThenElseBlock($2, *$4, *$6, yylineno); }
+             | IF condition THEN commands ENDIF { $$ = compiler->createIfThenElseBlock($2, *$4, yylineno); }
+             | WHILE condition DO commands ENDWHILE { compiler->createWhileBlock($2, *$4, yylineno); }
+             | REPEAT commands UNTIL condition';' { compiler->createRepeatUntilBlock($4, *$2, yylineno); }
+             | proc_call';' { compiler->createProcedureCallCommand(yylineno); }
+             | READ identifier';' { compiler->createReadCommand($2, yylineno); }
+             | WRITE value';' { compiler->createWriteCommand($2, yylineno); }
              ;
 
 proc_head    : pidentifier '('args_decl')' { compiler->declareProcedureHead(*$1, yylineno); }
