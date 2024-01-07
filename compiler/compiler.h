@@ -8,6 +8,7 @@ class Compiler {
  public:
   Compiler();
   void setOutputFileName(std::string f_name);
+  void compile();
 
   // procedures declarations
   void declareProcedure(std::vector<Command*> commands);

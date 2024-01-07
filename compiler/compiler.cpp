@@ -6,10 +6,15 @@
 
 Compiler::Compiler() {
   current_symbol_table_ = std::make_shared<SymbolTable>();
+  flow_graph_ = std::make_shared<FlowGraph>();
 }
 
 void Compiler::setOutputFileName(std::string f_name) {
   output_file_name_ = f_name;
+}
+
+void Compiler::compile() {
+  flow_graph_->generateFlowGraph(main_, procedures_);
 }
 
 void Compiler::declareProcedure(std::vector<Command*> commands) {
@@ -148,6 +153,7 @@ Command *Compiler::createAssignmentCommand(VariableContainer *left_var, DefaultE
   AssignmentCommand* comm = new AssignmentCommand;
   comm->expression_ = *expr;
   comm->left_var_ = *left_var;
+  comm->type = command_type::ASSIGNMENT;
   return comm;
 }
 
@@ -159,6 +165,7 @@ Command *Compiler::createIfThenElseBlock(Condition *cond,
   comm->cond_ = *cond;
   comm->then_commands_ = then_commands;
   comm->else_commands_ = else_commands;
+  comm->type = command_type::IF_ELSE;
   return comm;
 }
 
@@ -166,6 +173,7 @@ Command *Compiler::createIfThenElseBlock(Condition *cond, std::vector<Command *>
   IfElseCommand* comm = new IfElseCommand;
   comm->cond_ = *cond;
   comm->then_commands_ = then_commands;
+  comm->type = command_type::IF_ELSE;
   return comm;
 }
 
@@ -173,6 +181,7 @@ Command *Compiler::createWhileBlock(Condition *cond, std::vector<Command *> comm
   WhileCommand* comm = new WhileCommand;
   comm->cond_ = *cond;
   comm->commands_ = commands;
+  comm->type = command_type::WHILE;
   return comm;
 }
 
@@ -180,12 +189,14 @@ Command *Compiler::createRepeatUntilBlock(Condition *cond, std::vector<Command *
   RepeatUntilCommand* comm = new RepeatUntilCommand;
   comm->cond_ = *cond;
   comm->commands_ = commands;
+  comm->type = command_type::REPEAT;
   return comm;
 }
 
 Command *Compiler::createProcedureCallCommand(int line_number) {
   ProcedureCallCommand* comm = new ProcedureCallCommand;
   comm->proc_call_ = current_procedure_call_;
+  comm->type = command_type::PROC_CALL;
   return comm;
 }
 
@@ -198,12 +209,14 @@ Command *Compiler::createReadCommand(VariableContainer *var, int line_number) {
   }
   ReadCommand* comm = new ReadCommand;
   comm->var_ = *var;
+  comm->type = command_type::READ;
   return comm;
 }
 
 Command *Compiler::createWriteCommand(VariableContainer *var, int line_number) {
   WriteCommand* comm = new WriteCommand;
   comm->written_value_ = *var;
+  comm->type = command_type::WRITE;
   return comm;
 }
 
@@ -388,6 +401,7 @@ Symbol Compiler::createSymbol(std::string symbol_name, enum symbol_type type) {
   return new_symbol;
 }
 
+// TODO(Jakub Drzewiecki): Set symbols start indexes at next powers of 2 (if there are less than 64)
 void Compiler::setSymbolBounds(Symbol & symbol, long long mem_len, int line_number) {
   if(mem_len <= 0) {  // illegal array size
     throw std::runtime_error("Error at line " + std::to_string(line_number)

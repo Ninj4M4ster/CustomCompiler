@@ -61,7 +61,7 @@ std::shared_ptr<Compiler> compiler;
  * add optimizations in translation phase
  */
 
-program_all  : procedures main {/* generate flow graph, optimize and output code */}
+program_all  : procedures main { compiler->compile(); }
              ;
 
 procedures   : procedures PROCEDURE proc_head IS declarations IN commands END { compiler->declareProcedure(*$7); }
@@ -80,11 +80,11 @@ commands     : commands command { $1->push_back($2); }
 command      : identifier ASSIGNMENT expression';' { $$ = compiler->createAssignmentCommand($1, $3, yylineno);}
              | IF condition THEN commands ELSE commands ENDIF { $$ = compiler->createIfThenElseBlock($2, *$4, *$6, yylineno); }
              | IF condition THEN commands ENDIF { $$ = compiler->createIfThenElseBlock($2, *$4, yylineno); }
-             | WHILE condition DO commands ENDWHILE { compiler->createWhileBlock($2, *$4, yylineno); }
-             | REPEAT commands UNTIL condition';' { compiler->createRepeatUntilBlock($4, *$2, yylineno); }
-             | proc_call';' { compiler->createProcedureCallCommand(yylineno); }
-             | READ identifier';' { compiler->createReadCommand($2, yylineno); }
-             | WRITE value';' { compiler->createWriteCommand($2, yylineno); }
+             | WHILE condition DO commands ENDWHILE { $$ = compiler->createWhileBlock($2, *$4, yylineno); }
+             | REPEAT commands UNTIL condition';' { $$ = compiler->createRepeatUntilBlock($4, *$2, yylineno); }
+             | proc_call';' { $$ = compiler->createProcedureCallCommand(yylineno); }
+             | READ identifier';' { $$ = compiler->createReadCommand($2, yylineno); }
+             | WRITE value';' { $$ = compiler->createWriteCommand($2, yylineno); }
              ;
 
 proc_head    : pidentifier '('args_decl')' { compiler->declareProcedureHead(*$1, yylineno); }

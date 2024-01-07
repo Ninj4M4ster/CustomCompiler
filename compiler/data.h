@@ -101,6 +101,59 @@ class ModuloExpression : public DefaultExpression {
   expression_type type = expression_type::MODULO;
 };
 
+/**
+ * a ? b
+ * ---------
+ * EQ: a - b == 0 && b - a == 0
+ *
+ * LOAD b_add
+ * PUT b
+ * LOAD a_add
+ * PUT c
+ * SUB b
+ * JPOS next_block  (a - b > 0 -> a != b; a - b == 0 -> b - a ? 0)
+ * GET b
+ * SUB c
+ * JPOS next_block (b - a > 0 -> a != b; b - a == 0 -> a == b)
+ * equal block
+ * next_block
+ * -----------------
+ * NEQ: a - b != 0 || b - a != 0
+ *
+ * LOAD b_add
+ * PUT b
+ * LOAD a_add
+ * PUT c
+ * SUB b
+ * JPOS nequal_block  (a - b > 0 -> a != b; a - b == 0 -> b - a ? 0)
+ * GET b
+ * SUB c
+ * JZERO next_block  (b - a == 0 -> a == b ; b - a > 0 -> a != b)
+ * nequal_block
+ * next_block
+ * ------------------
+ * GT:  a > b -> !(a <= b) -> !(a < b + 1) -> !(b + 1 - a > 0)
+ *
+ * LOAD a_add
+ * PUT b
+ * LOAD b_add
+ * INC a
+ * SUB b  (b + 1 - a)
+ * JPOS next_block
+ * gt_block
+ * next_block
+ * -------------------------
+ * GE: a >= b -> a + 1 > b -> a + 1 - b > 0
+ *
+ * LOAD b_add
+ * PUT b
+ * LOAD a_add
+ * INC a
+ * SUB b  (a + 1 - b)
+ * JZERO next_block  (a + 1 - b == 0 -> a + 1 <= b)
+ * ge_block
+ * next_block
+ */
 enum class condition_type {
   EQ,
   NEQ,
@@ -144,51 +197,117 @@ class Command {
   enum command_type type;
 };
 
+/**
+ * x := a ? b
+ * ? - expression
+ * y_add - address of y variable
+ *
+ * LOAD a_add
+ * ? b (store expression result in R_a)
+ * STORE x_add
+ */
 class AssignmentCommand : public Command {
  public:
   VariableContainer left_var_;
   DefaultExpression expression_;
-  enum command_type type = command_type::ASSIGNMENT;
 };
 
+/**
+ * if else then:
+ * condition target block - then_commands
+ * condition next block - else_commands
+ *
+ * cond-block
+ * then_commands
+ * JUMP next_block
+ * else_commands
+ * next_block
+ *
+ * ----------------
+ * if then:
+ * condition target block - then commands
+ * condition next block - next block
+ *
+ * cond-block
+ * then_commands
+ * next_block
+ */
 class IfElseCommand : public Command {
  public:
   Condition cond_;
   std::vector<Command*> then_commands_;
   std::vector<Command*> else_commands_;
-  enum command_type type = command_type::IF_ELSE;
 };
 
+/**
+ * condition target block - commands
+ * condition next block - next_block
+ *
+ * cond-block
+ * commands
+ * JUMP cond-block
+ * next_block
+ */
 class WhileCommand : public Command {
  public:
   Condition cond_;
   std::vector<Command*> commands_;
-  enum command_type type = command_type::WHILE;
 };
 
+/**
+ * condition target block - loop_end
+ * condition next block - commands
+ *
+ * cond-block
+ * loop_end
+ * JUMP next_block
+ * commands
+ * JUMP cond_block
+ * next_block
+ */
 class RepeatUntilCommand : public Command {
  public:
   Condition cond_;
   std::vector<Command*> commands_;
-  enum command_type type = command_type::REPEAT;
 };
 
+/**
+ * firstly store all current registers that hold values in memory
+ *
+ * STRK h  (store current line number)
+ * JUMP proc_start
+ * procedure
+ * INC h
+ * INC h
+ * GET h
+ * JUMPR h
+ *
+ */
 class ProcedureCallCommand : public Command {
  public:
   ProcedureHead proc_call_;
-  enum command_type type = command_type::PROC_CALL;
 };
 
+/**
+ * READ a:
+ *
+ * READ
+ * STORE a_add
+ */
 class ReadCommand : public Command {
  public:
   VariableContainer var_;
-  enum command_type type = command_type::READ;
 };
 
+/**
+ * WRITE a:
+ *
+ * LOAD a_add
+ * WRITE
+ */
 class WriteCommand : public Command {
  public:
   VariableContainer written_value_;
-  enum command_type type = command_type::WRITE;
 };
 
 typedef struct procedure {
