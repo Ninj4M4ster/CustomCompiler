@@ -15,6 +15,7 @@ void Compiler::setOutputFileName(std::string f_name) {
 
 void Compiler::compile() {
   flow_graph_->generateFlowGraph(main_, procedures_);
+  flow_graph_->generateCode();
 }
 
 void Compiler::declareProcedure(std::vector<Command*> commands) {

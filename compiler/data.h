@@ -18,6 +18,12 @@ typedef struct variable_container {
   virtual std::string getVariableName() {
     return "";
   };
+  virtual std::string getIndexVariableName() {
+    return "";
+  };
+  virtual long long int getValue() {
+    return -1;
+  }
 } VariableContainer;
 
 typedef struct variable : public VariableContainer {
@@ -29,6 +35,9 @@ typedef struct variable : public VariableContainer {
 
 typedef struct r_value : public VariableContainer {
   long long int value;
+  long long getValue() override {
+    return value;
+  }
 } RValue;
 
 typedef struct array : public VariableContainer {
@@ -37,6 +46,9 @@ typedef struct array : public VariableContainer {
   std::string getVariableName() override {
     return var_name;
   };
+  long long getValue() override {
+    return index;
+  }
 } Array;
 
 typedef struct variable_indexed_array : public VariableContainer {
@@ -46,8 +58,17 @@ typedef struct variable_indexed_array : public VariableContainer {
   std::string getVariableName() override {
     return var_name;
   };
+  std::string getIndexVariableName() override {
+    return index_var_name;
+  }
 } VariableIndexedArray;
 
+class Register {
+ public:
+  bool initialized_ = false;
+  std::string register_name_;
+  std::shared_ptr<VariableContainer> curr_variable = nullptr;
+};
 
 enum class expression_type {
   DEFAULT,
@@ -59,44 +80,123 @@ enum class expression_type {
 };
 
 // TODO(Jakub Drzewiecki): change expressions to two classes
+/**
+ * x := var_  (x - left side variable)
+ *
+ * get var_ into reg_?
+ *
+ * x is in reg_?
+ */
 class DefaultExpression {
  public:
   VariableContainer* var_;
+  virtual std::vector<VariableContainer> neededVariablesInRegisters() {
+    return {*var_};
+  }
+  virtual int needed_regs() {
+    return 0;
+  }
+  // accumulator should be the last register
+  virtual std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs) {
+    return {};
+  }
  private:
   expression_type type = expression_type::DEFAULT;
 };
 
+/**
+ * x := var_ + right_var_
+ *
+ * get var_ into reg_b
+ * get right_var_ into reg_a
+ * ADD b
+ *
+ * x is in reg a
+ */
 class PlusExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
+  std::vector<VariableContainer> neededVariablesInRegisters() override {
+    return {*var_, *right_var_};
+  }
+  int needed_regs() override {
+    return 1;
+  }
+  std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs) override {
+    std::shared_ptr<Register> var_register = regs.at(0);
+    return {"ADD " + var_register->register_name_};
+  }
  private:
   expression_type type = expression_type::PLUS;
 };
 
+/**
+ * x := var_ + right_var_
+ *
+ * get right_var_ into reg_b
+ * get var_ into reg_a
+ * SUB b
+ *
+ * x is in reg a
+ */
 class MinusExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
+  std::vector<VariableContainer> neededVariablesInRegisters() override {
+    return {*right_var_, *var_};
+  }
+  int needed_regs() override {
+    return 1;
+  }
+  std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs) override {
+    std::shared_ptr<Register> right_var_register = regs.at(0);
+    return {"SUB " + right_var_register->register_name_};
+  }
  private:
   expression_type type = expression_type::MINUS;
 };
 
+/**
+ * x := var_ * right_var_
+ *
+ * x is in reg a
+ */
 class MultiplyExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
+  std::vector<VariableContainer> neededVariablesInRegisters() override {
+    return {*var_, *right_var_};
+  }
  private:
   expression_type type = expression_type::MULTIPLY;
 };
 
+/**
+ * x := var_ / right_var_
+ *
+ * x is in reg a
+ */
 class DivideExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
+  std::vector<VariableContainer> neededVariablesInRegisters() override {
+    return {*var_, *right_var_};
+  }
  private:
   expression_type type = expression_type::DIVIDE;
 };
 
+/**
+ * x := var_ % right_var_
+ *
+ * x is in reg a
+ */
 class ModuloExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
+  std::vector<VariableContainer> neededVariablesInRegisters() override {
+    return {*var_, *right_var_};
+  }
  private:
   expression_type type = expression_type::MODULO;
 };
