@@ -65,7 +65,7 @@ typedef struct variable_indexed_array : public VariableContainer {
 
 class Register {
  public:
-  bool initialized_ = false;
+  bool currently_used_ = false;
   std::string register_name_;
   std::shared_ptr<VariableContainer> curr_variable = nullptr;
 };
