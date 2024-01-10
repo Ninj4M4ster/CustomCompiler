@@ -79,7 +79,7 @@ void Compiler::addProcedureCallArgument(std::string variable_name, int line_numb
   if(sym == nullptr) {  // no symbol found
     throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name.");
   }
-  ProcedureArgument arg;
+  ProcedureCallArgument arg;
   arg.name = variable_name;
   arg.type = sym->type;
   arg.needs_initialization_before_call = sym->initialized;
@@ -138,10 +138,11 @@ void Compiler::createProcedureCall(std::string procedure_name, int line_number) 
     if(proc_decl_arg_sym->initialized) {
       proc_arg_sym->initialized = true;
     }
+    current_procedure_call_arguments_.at(i).target_variable_symbol = proc_decl_arg_sym;
   }
-  ProcedureHead called_proc;
+  ProcedureCall called_proc;
   called_proc.name = procedure_name;
-  called_proc.arguments = current_procedure_call_arguments_;
+  called_proc.args = current_procedure_call_arguments_;
   current_procedure_call_arguments_.clear();
   current_procedure_call_ = called_proc;
 }

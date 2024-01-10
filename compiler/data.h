@@ -282,6 +282,18 @@ typedef struct procedure_head {
   std::vector<ProcedureArgument> arguments;
 } ProcedureHead;
 
+typedef struct procedure_call_argument {
+  std::string name;
+  enum symbol_type type;
+  bool needs_initialization_before_call;
+  std::shared_ptr<Symbol> target_variable_symbol;
+} ProcedureCallArgument;
+
+typedef struct procedure_call {
+  std::string name;
+  std::vector<ProcedureCallArgument> args;
+} ProcedureCall;
+
 enum class command_type {
   ASSIGNMENT,
   IF_ELSE,
@@ -385,7 +397,7 @@ class RepeatUntilCommand : public Command {
  */
 class ProcedureCallCommand : public Command {
  public:
-  ProcedureHead proc_call_;
+  ProcedureCall proc_call_;
 };
 
 /**

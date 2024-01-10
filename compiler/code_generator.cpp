@@ -21,9 +21,17 @@ void CodeGenerator::generateFlowGraph(Procedure main, std::vector<Procedure> pro
 
 }
 
+// TODO(Jakub Drzewiecki): Add jumps at the end of procedures, add jump at the start of program to main
 void CodeGenerator::generateCode() {
+  bool first_proc = true;
   for(auto proc_start : procedures_start_nodes_) {
-    generateCodePreorder(proc_start);
+    if(first_proc) {
+      proc_start->start_line_ = 1;
+      generateCodePreorder(proc_start);
+      first_proc = false;
+    } else {
+      generateCodePreorder(proc_start);
+    }
   }
   generateCodePreorder(start_node);
 }
@@ -183,7 +191,13 @@ void CodeGenerator::saveVariableFromRegister(std::shared_ptr<Register> reg,
   reg->variable_saved_ = true;
 }
 
-// This method ignores registers that are currently used
+/**
+ * This method moves variable from accumulator if the variable in accumulator is not saved.
+ * In case there is only one register with saved/without value value left, one value from registers will be saved.
+ * Currently_used flag is ignored.
+ *
+ * @param node
+ */
 void CodeGenerator::moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> node) {
   if(accumulator_->variable_saved_) {
     accumulator_->currently_used_ = false;
@@ -484,7 +498,7 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
   }
   // save variable indexed arrays since such value cannot be kept in registers, no chance of saving them later
   if(command->left_var_.type == variable_type::VARIABLE_INDEXED_ARR) {
-    // TODO(Jakub Drzewiecki): New flag to  not delete value that is currently in saving process
+    // TODO(Jakub Drzewiecki): New flag not to delete value that is currently in saving process
     std::shared_ptr<Register> free_reg = findFreeRegister(node);
     free_reg->currently_used_ = true;
     node->code_list_.push_back("PUT " + free_reg->register_name_);
@@ -492,7 +506,7 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     free_reg->curr_variable = std::make_shared<VariableContainer>(command->left_var_);
     auto sym = current_symbol_table_->findSymbol(command->left_var_.getIndexVariableName());
     Variable var;
-    var.type == variable_type::VAR;
+    var.type = variable_type::VAR;
     var.var_name = command->left_var_.getIndexVariableName();
     auto var_ind_sym =
         current_symbol_table_->findSymbol(command->left_var_.getIndexVariableName());
@@ -554,5 +568,27 @@ void CodeGenerator::handleWriteCommand(WriteCommand *command, std::shared_ptr<Gr
 
 void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
                                                std::shared_ptr<GraphNode> node) {
+  // save all currently unsaved variables
+  moveAccumulatorToFreeRegister(node);
+  std::shared_ptr<Register> free_reg = findFreeRegister(node);
+  for(auto reg : registers_) {
+    if(reg->register_name_ != free_reg->register_name_) {
+      saveVariableFromRegister(reg, free_reg, node);
+    }
+  }
+  // pass variables memory addresses to procedures memory reserved for declared arguments
+  for(auto arg : command->proc_call_.args) {
+    auto sym = current_symbol_table_->findSymbol(arg.name);
+    auto target_sym = arg.target_variable_symbol;
+    getValueIntoRegister(sym->mem_start, free_reg, node);
+    node->code_list_.push_back("GET " + free_reg->register_name_);
+    getValueIntoRegister(target_sym->mem_start, free_reg, node);
+    node->code_list_.push_back("STORE " + free_reg->register_name_);
+  }
 
+  // pass current line number in register h
+  node->code_list_.push_back("STRK h");
+  // add procedure call
+  // TODO(Jakub Drzewiecki): Add lines numbers calculations to make procedures calls possible
+  node->code_list_.push_back("JUMP ");
 }

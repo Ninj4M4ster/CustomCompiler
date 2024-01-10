@@ -80,8 +80,8 @@ class Compiler {
   ProcedureHead curr_procedure_head_;
 
   // data and methods concerning procedure calls
-  std::vector<ProcedureArgument> current_procedure_call_arguments_;
-  ProcedureHead current_procedure_call_;
+  std::vector<ProcedureCallArgument> current_procedure_call_arguments_;
+  ProcedureCall current_procedure_call_;
   void markProcedureArgumentNeedsInitialization(std::string arg_name);
   bool isProcedureArgumentMarked(std::string arg_name);
 

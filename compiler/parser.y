@@ -55,8 +55,8 @@ std::shared_ptr<Compiler> compiler;
 %%
 
 /* Problems:
- * store code in data structures
- * transform data structures into flow graph
+ * store code in data structures - done
+ * transform data structures into flow graph - done
  * translate flow graph into result code
  * add optimizations in translation phase
  */
