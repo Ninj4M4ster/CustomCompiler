@@ -34,7 +34,7 @@ class FlowGraph {
   std::shared_ptr<GraphNode> generateSingleFlowGraph(Procedure proc);
   void process_commands(std::vector<Command*> comms, std::shared_ptr<GraphNode> curr_node);
   std::shared_ptr<GraphNode> start_node;
-  std::shared_ptr<SymbolTable> symbol_table_;
+  std::shared_ptr<SymbolTable> current_symbol_table_;
   std::vector<std::shared_ptr<GraphNode>> procedures_start_nodes_;
 
   void generateCodePreorder(std::shared_ptr<GraphNode> node);
@@ -42,12 +42,14 @@ class FlowGraph {
   std::vector<std::shared_ptr<Register>> registers_;
 
   // registers management
-  void saveVariableFromRegister(std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node);
+  void saveVariableFromRegister(std::shared_ptr<Register> reg,
+                                std::shared_ptr<Register> other_free_reg,
+                                std::shared_ptr<GraphNode> node);
   void moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> node);
   // this method should find free register or make one free register ; freeing register is done using A register
   std::shared_ptr<Register> findFreeRegister(std::shared_ptr<GraphNode> node);
   void getValueIntoRegister(long long int value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node);
-  std::shared_ptr<Register> checkVariableAlreadyLoaded(VariableContainer var, std::shared_ptr<GraphNode> node);
+  std::shared_ptr<Register> checkVariableAlreadyLoaded(VariableContainer var);
   std::shared_ptr<Register> loadVariable(VariableContainer var, std::shared_ptr<GraphNode> node);
   void loadVariableToAccumulator(VariableContainer var, std::shared_ptr<GraphNode> node);
 

@@ -62,12 +62,14 @@ void Compiler::declareVariable(std::string variable_name, long long array_size, 
 
 void Compiler::declareProcedureArgument(std::string variable_name, int line_number) {
   Symbol new_symbol = createSymbol(variable_name, symbol_type::PROC_ARGUMENT);
+  setSymbolBounds(new_symbol, 1, line_number);
   current_symbol_table_->addSymbol(new_symbol, line_number);
   current_procedure_arguments_.push_back({variable_name, symbol_type::VAR});
 }
 
 void Compiler::declareProcedureArrayArgument(std::string variable_name, int line_number) {
   Symbol new_symbol = createSymbol(variable_name, symbol_type::PROC_ARRAY_ARGUMENT);
+  setSymbolBounds(new_symbol, 1, line_number);
   current_symbol_table_->addSymbol(new_symbol, line_number);
   current_procedure_arguments_.push_back({variable_name, symbol_type::ARR});
 }

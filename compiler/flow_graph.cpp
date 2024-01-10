@@ -13,12 +13,15 @@ FlowGraph::FlowGraph() {
 
 void FlowGraph::generateFlowGraph(Procedure main, std::vector<Procedure> procedures) {
   for(auto proc : procedures) {
+    current_symbol_table_ = proc.symbol_table;
     procedures_start_nodes_.push_back(generateSingleFlowGraph(proc));
   }
+  current_symbol_table_ = main.symbol_table;
   start_node = generateSingleFlowGraph(main);
 
 }
 
+// add
 void FlowGraph::generateCode() {
   for(auto proc_start : procedures_start_nodes_) {
     generateCodePreorder(proc_start);
@@ -100,7 +103,6 @@ void FlowGraph::process_commands(std::vector<Command *> comms,
   }
 }
 
-// TODO(Jakub Drzewiecki): Pass current symbol table to this function
 // TODO(Jakub Drzewiecki): Missing handling one free register always
 void FlowGraph::generateCodePreorder(std::shared_ptr<GraphNode> node) {
   // generate code for current node
@@ -131,52 +133,141 @@ void FlowGraph::generateCodePreorder(std::shared_ptr<GraphNode> node) {
     generateCodePreorder(node->right_node);
 }
 
-void FlowGraph::saveVariableFromRegister(std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node) {
-
+// TODO(Jakub Drzewiecki): Possible missing handling which variable is in accumulator (could be other registers too)
+void FlowGraph::saveVariableFromRegister(std::shared_ptr<Register> reg,
+                                         std::shared_ptr<Register> other_free_reg,
+                                         std::shared_ptr<GraphNode> node) {
+  if(reg->variable_saved_) {
+    reg->curr_variable = nullptr;
+    reg->currently_used_ = false;
+    return;
+  }
+  auto var = reg->curr_variable;
+  if(var->type == variable_type::R_VAL || var->type == variable_type::VARIABLE_INDEXED_ARR) {
+    reg->curr_variable = nullptr;
+    reg->currently_used_ = false;
+    reg->variable_saved_ = true;
+    return;
+  }
+  auto sym =
+      current_symbol_table_->findSymbol(reg->curr_variable->getVariableName());
+  if(var->type == variable_type::ARR && sym->type == symbol_type::PROC_ARRAY_ARGUMENT) {
+    getValueIntoRegister(sym->mem_start, other_free_reg, node);
+    node->code_list_.push_back("LOAD " + other_free_reg->register_name_);
+    node->code_list_.push_back("PUT " + other_free_reg->register_name_);
+    getValueIntoRegister(var->getValue(), accumulator_, node);
+    node->code_list_.push_back("ADD " + other_free_reg->register_name_);
+    node->code_list_.push_back("PUT " + other_free_reg->register_name_);
+    node->code_list_.push_back("GET " + reg->register_name_);
+    node->code_list_.push_back("STORE " + other_free_reg->register_name_);
+    other_free_reg->curr_variable = nullptr;
+    other_free_reg->currently_used_ = false;
+    other_free_reg->variable_saved_ = true;
+  } else if(sym->type == symbol_type::PROC_ARGUMENT) {
+    getValueIntoRegister(sym->mem_start, other_free_reg, node);
+    node->code_list_.push_back("LOAD " + other_free_reg->register_name_);
+    node->code_list_.push_back("PUT " + other_free_reg->register_name_);
+    node->code_list_.push_back("GET " + reg->register_name_);
+    node->code_list_.push_back("STORE " + other_free_reg->register_name_);
+    other_free_reg->curr_variable = nullptr;
+    other_free_reg->currently_used_ = false;
+    other_free_reg->variable_saved_ = true;
+  } else {
+    node->code_list_.push_back("GET " + reg->register_name_);
+    getValueIntoRegister(sym->mem_start, reg, node);
+    node->code_list_.push_back("STORE " + reg->register_name_);
+  }
+  accumulator_->curr_variable = reg->curr_variable;
+  accumulator_->currently_used_ = false;
+  accumulator_->variable_saved_ = true;
+  reg->curr_variable = nullptr;
+  reg->currently_used_ = false;
+  reg->variable_saved_ = true;
 }
 
-// TODO(Jakub Drzewiecki): Check if A register is free and can be used to load values
+// This method ignores registers that are currently used
 void FlowGraph::moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> node) {
-
-}
-
-// finding register should be done before starting and after finishing any computations on accumulator
-std::shared_ptr<Register> FlowGraph::findFreeRegister(std::shared_ptr<GraphNode> node) {
+  if(accumulator_->variable_saved_) {
+    accumulator_->currently_used_ = false;
+    accumulator_->curr_variable = nullptr;
+    return;
+  }
+  int regs_with_unsaved_vals = 0;
   std::shared_ptr<Register> chosen_reg = nullptr;
-  int free_regs = 0;
+  std::shared_ptr<Register> second_chosen_reg = nullptr;
   for(auto reg : registers_) {
-    if(!reg->curr_variable) {
-      free_regs++;
-      if(!chosen_reg) {
-        chosen_reg = reg;
-      }
+    if(!reg->variable_saved_) {
+      regs_with_unsaved_vals++;
+    }
+    if(reg->variable_saved_ && !chosen_reg) {
+      chosen_reg = reg;
+    }
+    if(reg->variable_saved_ && chosen_reg && !second_chosen_reg) {
+      second_chosen_reg = reg;
     }
   }
-  if(free_regs == 1) {
-    // if chosen reg is last free register
-    std::shared_ptr<Register> used_reg = nullptr;
+  chosen_reg->curr_variable = accumulator_->curr_variable;
+  chosen_reg->variable_saved_ = accumulator_->variable_saved_;
+  chosen_reg->currently_used_ = false;
+  accumulator_->curr_variable = nullptr;
+  accumulator_->variable_saved_ = true;
+  node->code_list_.push_back("PUT " + chosen_reg->register_name_);
+  if(7 - regs_with_unsaved_vals == 2 && !chosen_reg->variable_saved_) {  // leaving one reg for use
+    // choose reg with unsaved value that is not currently used
+    std::shared_ptr<Register> reg_for_save = nullptr;
     for(auto reg : registers_) {
-      if(reg->curr_variable && !reg->currently_used_) {
-        used_reg = reg;
+      if(!reg->variable_saved_ && !reg->currently_used_) {
+        reg_for_save = reg;
         break;
       }
     }
-    if(used_reg->curr_variable->getVariableName().empty()) {
-      used_reg->curr_variable = nullptr;
-    } else {
-      auto var = used_reg->curr_variable;
-      auto sym = symbol_table_->findSymbol(used_reg->curr_variable->getVariableName());
-      unsigned long long int target_val = 0;
-      if(var->type == variable_type::VAR) {
-        target_val = sym->mem_start;
-      } else if(var->type == variable_type::ARR) {
-        target_val = sym->mem_start + var->getValue();
+    saveVariableFromRegister(reg_for_save, second_chosen_reg, node);
+  }
+}
+
+/**
+ * This method is meant to find a register that can be used later
+ * in any computations or to read/write variable.
+ * It cannot be used if any of the registers is currently used in computations -
+ * all computations have to be finished before using this method.
+ *
+ * @param node Current flow graph node in which code might be generated.
+ * @return Register that can be used later in computations and is not already chosen for them.
+ */
+std::shared_ptr<Register> FlowGraph::findFreeRegister(std::shared_ptr<GraphNode> node) {
+  std::shared_ptr<Register> chosen_reg = nullptr;
+  for(auto reg : registers_) {
+    if(!reg->curr_variable && !reg->currently_used_) {
+      chosen_reg = reg;
+      break;
+    }
+  }
+  if(!chosen_reg) {  // no free registers with no values
+    for(auto reg : registers_) {
+      if(reg->variable_saved_ && !reg->currently_used_ && !chosen_reg) {
+        chosen_reg = reg;
+        break;
       }
-      node->code_list_.push_back("GET " + used_reg->register_name_);
-      used_reg->curr_variable = nullptr;
-      getValueIntoRegister(target_val, used_reg, node);
-      node->code_list_.push_back("STORE " + used_reg->register_name_);
-      used_reg->currently_used_ = false;
+    }
+    // no free registers with saved values - save one of registers and choose it
+    if(!chosen_reg) {
+      for(auto reg : registers_) {
+        if(!reg->variable_saved_ && !reg->currently_used_) {
+          chosen_reg = reg;
+          break;
+        }
+      }
+      // chosen_reg will be saved, reg_for_help is going to be used to help saving this register
+      // currently_used flag can be omitted, because registers cannot have any computations ongoing,
+      // and it will not be returned
+      std::shared_ptr<Register> reg_for_help = nullptr;
+      for(auto reg : registers_) {
+        if(reg->variable_saved_) {
+          reg_for_help = reg;
+          break;
+        }
+      }
+      saveVariableFromRegister(chosen_reg, reg_for_help, node);
     }
   }
   return chosen_reg;
@@ -201,17 +292,23 @@ void FlowGraph::getValueIntoRegister(long long value, std::shared_ptr<Register> 
   }
 }
 
-std::shared_ptr<Register> FlowGraph::checkVariableAlreadyLoaded(VariableContainer var,
-                                                                std::shared_ptr<GraphNode> node) {
+std::shared_ptr<Register> FlowGraph::checkVariableAlreadyLoaded(VariableContainer var) {
   std::shared_ptr<Register> chosen_reg = nullptr;
+  if(var.type == variable_type::VARIABLE_INDEXED_ARR)
+    return chosen_reg;
   for(auto reg : registers_) {
     if(reg->curr_variable) {
-      if(reg->curr_variable->getVariableName().empty() &&
-      var.getVariableName().empty() && reg->curr_variable->getValue() == var.getValue()) {
+      if(reg->curr_variable->type == variable_type::R_VAL &&
+      var.type == variable_type::R_VAL && reg->curr_variable->getValue() == var.getValue()) {
         chosen_reg = reg;
         break;
-      } else if(!reg->curr_variable->getVariableName().empty() &&
+      } else if(reg->curr_variable->type == variable_type::VAR && var.type == variable_type::VAR &&
       reg->curr_variable->getVariableName() == var.getVariableName()) { // check r values
+        chosen_reg = reg;
+        break;
+      } else if(reg->curr_variable->type == variable_type::ARR && var.type == variable_type::ARR &&
+      reg->curr_variable->getVariableName() == var.getVariableName() &&
+      reg->curr_variable->getValue() == var.getValue()) {
         chosen_reg = reg;
         break;
       }
@@ -219,11 +316,15 @@ std::shared_ptr<Register> FlowGraph::checkVariableAlreadyLoaded(VariableContaine
   }
   if(!chosen_reg) {
     if(accumulator_->curr_variable) {
-      if(accumulator_->curr_variable->getVariableName().empty() &&
-          var.getVariableName().empty() && accumulator_->curr_variable->getValue() == var.getValue()) {
+      if(accumulator_->curr_variable->type == variable_type::R_VAL &&
+          var.type == variable_type::R_VAL && accumulator_->curr_variable->getValue() == var.getValue()) {
         chosen_reg = accumulator_;
-      } else if(!accumulator_->curr_variable->getVariableName().empty() &&
+      } else if(accumulator_->curr_variable->type == variable_type::VAR && var.type == variable_type::VAR &&
           accumulator_->curr_variable->getVariableName() == var.getVariableName()) { // check r values
+        chosen_reg = accumulator_;
+      } else if(accumulator_->curr_variable->type == variable_type::ARR && var.type == variable_type::ARR &&
+          accumulator_->curr_variable->getVariableName() == var.getVariableName() &&
+          accumulator_->curr_variable->getValue() == var.getValue()) {
         chosen_reg = accumulator_;
       }
     }
@@ -233,17 +334,7 @@ std::shared_ptr<Register> FlowGraph::checkVariableAlreadyLoaded(VariableContaine
 
 // TODO(Jakub Drzewiecki): Refactor needed, but accumulator is already free
 std::shared_ptr<Register> FlowGraph::loadVariable(VariableContainer var, std::shared_ptr<GraphNode> node) {
-  std::shared_ptr<Register> chosen_reg = nullptr;
-  // check if variable is not already stored in one of registers
-  // TODO(Jakub Drzewiecki): Check if constants are loaded
-  for(auto reg : registers_) {
-    if(reg->curr_variable) {
-      if(reg->curr_variable->getVariableName() == var.getVariableName()) { // check r values
-        chosen_reg = reg;
-        break;
-      }
-    }
-  }
+  std::shared_ptr<Register> chosen_reg = checkVariableAlreadyLoaded(var);
   // TODO(Jakub Drzewiecki): Add handling process arguments variables
   if(!chosen_reg) {
     chosen_reg = findFreeRegister(node);
@@ -256,15 +347,15 @@ std::shared_ptr<Register> FlowGraph::loadVariable(VariableContainer var, std::sh
     if(var.type == variable_type::R_VAL) {
       target_val = var.getValue();
     } else if(var.type == variable_type::VAR) {
-      auto sym = symbol_table_->findSymbol(var.getVariableName());
+      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
       target_val = sym->mem_start;
     } else if(var.type == variable_type::ARR) {
-      auto sym = symbol_table_->findSymbol(var.getVariableName());
+      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
       target_val = sym->mem_start + var.getValue();
     } else {
-      auto sym = symbol_table_->findSymbol(var.getVariableName());
+      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
       target_val = sym->mem_start;
-      auto index_sym = symbol_table_->findSymbol(var.getIndexVariableName());
+      auto index_sym = current_symbol_table_->findSymbol(var.getIndexVariableName());
       unsigned long long int index_var_target_val = index_sym->mem_start;
       empty_reg_for_index_var = findFreeRegister(node);
       empty_reg_for_index_var->currently_used_ = true;
@@ -292,16 +383,7 @@ std::shared_ptr<Register> FlowGraph::loadVariable(VariableContainer var, std::sh
 }
 
 void FlowGraph::loadVariableToAccumulator(VariableContainer var, std::shared_ptr<GraphNode> node) {
-  std::shared_ptr<Register> chosen_reg = nullptr;\
-  // check if variable is not already stored in one of registers
-  for(auto reg : registers_) {
-    if(reg->curr_variable) {
-      if(reg->curr_variable->getVariableName() == var.getVariableName()) { // check r values
-        chosen_reg = reg;
-        break;
-      }
-    }
-  }
+  std::shared_ptr<Register> chosen_reg = checkVariableAlreadyLoaded(var);
   // TODO(Jakub Drzewiecki): Add handling process arguments variables
 
   if(chosen_reg) {
@@ -315,15 +397,15 @@ void FlowGraph::loadVariableToAccumulator(VariableContainer var, std::shared_ptr
     if(var.type == variable_type::R_VAL) {
       target_val = var.getValue();
     } else if(var.type == variable_type::VAR) {
-      auto sym = symbol_table_->findSymbol(var.getVariableName());
+      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
       target_val = sym->mem_start;
     } else if(var.type == variable_type::ARR) {
-      auto sym = symbol_table_->findSymbol(var.getVariableName());
+      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
       target_val = sym->mem_start + var.getValue();
     } else {
-      auto sym = symbol_table_->findSymbol(var.getVariableName());
+      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
       target_val = sym->mem_start;
-      auto index_sym = symbol_table_->findSymbol(var.getIndexVariableName());
+      auto index_sym = current_symbol_table_->findSymbol(var.getIndexVariableName());
       unsigned long long int index_var_target_val = index_sym->mem_start;
       empty_reg_for_index_var = findFreeRegister(node);
       empty_reg_for_index_var->currently_used_ = true;
@@ -350,12 +432,12 @@ void FlowGraph::loadVariableToAccumulator(VariableContainer var, std::shared_ptr
 void FlowGraph::handleAssignmentCommand(AssignmentCommand *command, std::shared_ptr<GraphNode> node) {
   std::vector<VariableContainer> needed_variables = command->expression_.neededVariablesInRegisters();
   // search if any of the variables are already loaded and reserve the registers
-  bool last_var_loaded_in_acc = false, any_var_loaded_in_acc = false;
+  bool last_var_loaded_in_acc = false;
   int loaded_vars = 0;
   std::vector<std::shared_ptr<Register>> searched_variables_in_regs;
   for(int i = 0; i < needed_variables.size(); i++) {
     auto var = needed_variables.at(i);
-    std::shared_ptr<Register> searched_reg_var = checkVariableAlreadyLoaded(var, node);
+    std::shared_ptr<Register> searched_reg_var = checkVariableAlreadyLoaded(var);
     if(searched_reg_var) {
       loaded_vars++;
       searched_reg_var->currently_used_ = true;
@@ -367,7 +449,7 @@ void FlowGraph::handleAssignmentCommand(AssignmentCommand *command, std::shared_
       }
     }
   }
-  if(!last_var_loaded_in_acc || loaded_vars != needed_variables.size() - 1) {  // assignment can be run
+  if(!last_var_loaded_in_acc || loaded_vars != needed_variables.size() - 1) {
     moveAccumulatorToFreeRegister(node);
   }
   // store vals in registers in good order
@@ -390,6 +472,8 @@ void FlowGraph::handleAssignmentCommand(AssignmentCommand *command, std::shared_
 
   } else {
     accumulator_->curr_variable = std::make_shared<VariableContainer>(command->left_var_);
+    accumulator_->variable_saved_ = false;
+    accumulator_->currently_used_ = false;
   }
   for(auto generated_code : generated_commands) {
     node->code_list_.push_back(generated_code);
@@ -406,7 +490,7 @@ void FlowGraph::handleReadCommand(ReadCommand *command, std::shared_ptr<GraphNod
 }
 
 void FlowGraph::handleWriteCommand(WriteCommand *command, std::shared_ptr<GraphNode> node) {
-  std::shared_ptr<Register> reg = checkVariableAlreadyLoaded(command->written_value_, node);
+  std::shared_ptr<Register> reg = checkVariableAlreadyLoaded(command->written_value_);
   reg->currently_used_ = true;
   if(!reg) {
     moveAccumulatorToFreeRegister(node);
