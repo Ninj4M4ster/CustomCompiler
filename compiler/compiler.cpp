@@ -6,7 +6,7 @@
 
 Compiler::Compiler() {
   current_symbol_table_ = std::make_shared<SymbolTable>();
-  flow_graph_ = std::make_shared<FlowGraph>();
+  code_generator_ = std::make_shared<CodeGenerator>();
 }
 
 void Compiler::setOutputFileName(std::string f_name) {
@@ -14,8 +14,8 @@ void Compiler::setOutputFileName(std::string f_name) {
 }
 
 void Compiler::compile() {
-  flow_graph_->generateFlowGraph(main_, procedures_);
-  flow_graph_->generateCode();
+  code_generator_->generateFlowGraph(main_, procedures_);
+  code_generator_->generateCode();
 }
 
 void Compiler::declareProcedure(std::vector<Command*> commands) {

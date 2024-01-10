@@ -270,7 +270,6 @@ class Condition {
   VariableContainer* right_var_;
 };
 
-// TODO(Jakub Drzewiecki): Add system for checking if argument is not used uninitialized illegally in procedure
 // TODO(Jakub Drzewiecki): To pass args by reference, it is needed to pass memory addresses of the arguments
 typedef struct procedure_argument {
   std::string name;

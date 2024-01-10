@@ -1,5 +1,5 @@
-#ifndef CUSTOMCOMPILER_COMPILER_FLOW_GRAPH_H_
-#define CUSTOMCOMPILER_COMPILER_FLOW_GRAPH_H_
+#ifndef CUSTOMCOMPILER_COMPILER_CODE_GENERATOR_H_
+#define CUSTOMCOMPILER_COMPILER_CODE_GENERATOR_H_
 
 #include "data.h"
 
@@ -24,9 +24,9 @@ class GraphNode {
   long long int node_length_ = 0;
 };
 
-class FlowGraph {
+class CodeGenerator {
  public:
-  FlowGraph();
+  CodeGenerator();
   void generateFlowGraph(Procedure main, std::vector<Procedure> procedures);
   void generateCode();
 
@@ -50,13 +50,15 @@ class FlowGraph {
   std::shared_ptr<Register> findFreeRegister(std::shared_ptr<GraphNode> node);
   void getValueIntoRegister(long long int value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node);
   std::shared_ptr<Register> checkVariableAlreadyLoaded(VariableContainer var);
-  std::shared_ptr<Register> loadVariable(VariableContainer var, std::shared_ptr<GraphNode> node);
-  void loadVariableToAccumulator(VariableContainer var, std::shared_ptr<GraphNode> node);
+  std::shared_ptr<Register> loadVariable(VariableContainer var,
+                                         std::shared_ptr<Register> target_reg,
+                                         std::shared_ptr<GraphNode> node);
 
   // commands handling
   void handleAssignmentCommand(AssignmentCommand* command, std::shared_ptr<GraphNode> node);
   void handleReadCommand(ReadCommand* command, std::shared_ptr<GraphNode> node);
   void handleWriteCommand(WriteCommand* command, std::shared_ptr<GraphNode> node);
+  void handleProcedureCallCommand(ProcedureCallCommand* command, std::shared_ptr<GraphNode> node);
 };
 
-#endif //CUSTOMCOMPILER_COMPILER_FLOW_GRAPH_H_
+#endif //CUSTOMCOMPILER_COMPILER_CODE_GENERATOR_H_

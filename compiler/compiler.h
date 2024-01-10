@@ -1,7 +1,7 @@
 #ifndef CUSTOMCOMPILER_COMPILER_COMPILER_H_
 #define CUSTOMCOMPILER_COMPILER_COMPILER_H_
 
-#include "flow_graph.h"
+#include "code_generator.h"
 #include "data.h"
 
 class Compiler {
@@ -85,7 +85,7 @@ class Compiler {
   void markProcedureArgumentNeedsInitialization(std::string arg_name);
   bool isProcedureArgumentMarked(std::string arg_name);
 
-  std::shared_ptr<FlowGraph> flow_graph_;
+  std::shared_ptr<CodeGenerator> code_generator_;
 
   // containers for all procedures and main function
   std::vector<Procedure> procedures_;

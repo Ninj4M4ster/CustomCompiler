@@ -9,6 +9,7 @@
 #include <vector>
 #include "symbol.h"
 
+// TODO(Jakub Drzewiecki): Add symbol for line address for jumping out of procedures
 class SymbolTable {
  public:
   void addSymbol(Symbol new_symbol, int line_number);
