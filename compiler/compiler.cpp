@@ -46,6 +46,9 @@ void Compiler::declareProcedureHead(std::string procedure_name, int line_number)
   curr_procedure_head_.name = procedure_name;
   curr_procedure_head_.arguments = current_procedure_arguments_;
   current_procedure_arguments_.clear();
+  Symbol new_symbol;
+  setSymbolBounds(new_symbol, 1, line_number);
+  current_symbol_table_->addProcJumpBackMemoryAddress(new_symbol);
 }
 
 void Compiler::declareVariable(std::string variable_name, int line_number) {

@@ -36,10 +36,16 @@ class CodeGenerator {
   std::shared_ptr<GraphNode> start_node;
   std::shared_ptr<SymbolTable> current_symbol_table_;
   std::vector<std::shared_ptr<GraphNode>> procedures_start_nodes_;
+  std::vector<std::string> procedures_names_;
 
   void generateCodePreorder(std::shared_ptr<GraphNode> node);
   std::shared_ptr<Register> accumulator_;
   std::vector<std::shared_ptr<Register>> registers_;
+
+  long long int current_start_line_ = 0;
+  bool generate_jump_to_main_ = false;
+  void generateProcedureStart(std::shared_ptr<GraphNode> node);
+  void generateProcedureEnd(std::shared_ptr<GraphNode> node);
 
   // registers management
   void saveVariableFromRegister(std::shared_ptr<Register> reg,

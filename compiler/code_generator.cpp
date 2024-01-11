@@ -15,6 +15,7 @@ void CodeGenerator::generateFlowGraph(Procedure main, std::vector<Procedure> pro
   for(auto proc : procedures) {
     current_symbol_table_ = proc.symbol_table;
     procedures_start_nodes_.push_back(generateSingleFlowGraph(proc));
+    procedures_names_.push_back(proc.head.name);
   }
   current_symbol_table_ = main.symbol_table;
   start_node = generateSingleFlowGraph(main);
@@ -25,13 +26,15 @@ void CodeGenerator::generateFlowGraph(Procedure main, std::vector<Procedure> pro
 void CodeGenerator::generateCode() {
   bool first_proc = true;
   for(auto proc_start : procedures_start_nodes_) {
+    // TODO(Jakub Drzewiecki): Update line starts after generating procedures starts and ends
     if(first_proc) {
-      proc_start->start_line_ = 1;
-      generateCodePreorder(proc_start);
+      current_start_line_ = 1;
+      generate_jump_to_main_ = true;
       first_proc = false;
-    } else {
-      generateCodePreorder(proc_start);
     }
+    generateProcedureStart(proc_start);
+    generateCodePreorder(proc_start);
+    generateProcedureEnd(proc_start);
   }
   generateCodePreorder(start_node);
 }
@@ -111,7 +114,10 @@ void CodeGenerator::process_commands(std::vector<Command *> comms,
 }
 
 void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
+  long long int code_length_before_generation = node->code_list_.size();
   // generate code for current node
+  if(code_length_before_generation == 0)
+    node->start_line_ = current_start_line_;
   for(auto comm : node->commands) {
     if(comm->type == command_type::ASSIGNMENT) {
       AssignmentCommand* assignment_command = static_cast<AssignmentCommand*>(comm);
@@ -130,6 +136,12 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
   }
 
   // put condition to code
+
+  long long int code_length_after_generation = node->code_list_.size();
+  current_start_line_ += code_length_after_generation - code_length_before_generation;
+  if(node->jump_line_target) {
+    current_start_line_++;
+  }
   // generate left node code
   // generate right node code
   // TODO(Jakub Drzewiecki): Handle registers states after left/right branch if there is if/else block following
@@ -137,6 +149,45 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
     generateCodePreorder(node->left_node);
   if(node->right_node != nullptr)
     generateCodePreorder(node->right_node);
+}
+
+void CodeGenerator::generateProcedureStart(std::shared_ptr<GraphNode> node) {
+  node->start_line_ = current_start_line_;
+  // store register h to proper memory address
+  auto sym = current_symbol_table_->getProcedureJumpBackMemoryAddressSymbol();
+  auto reg = registers_.at(0);
+  getValueIntoRegister(sym->mem_start, reg, node);
+  node->code_list_.push_back("STORE " + reg->register_name_);
+  current_start_line_ += node->code_list_.size();
+}
+
+void CodeGenerator::generateProcedureEnd(std::shared_ptr<GraphNode> node) {
+  long long int code_size_before_generation = node->code_list_.size();
+  // travel to last node
+  while(node->right_node) {
+    node = node->right_node;
+  }
+  // save all procedure arguments
+  auto free_reg = findFreeRegister(node);
+  for(auto reg : registers_) {
+    if(reg->curr_variable->type == variable_type::VAR || reg->curr_variable->type == variable_type::ARR) {
+      auto sym = current_symbol_table_->findSymbol(reg->curr_variable->getVariableName());
+      if(sym->type == symbol_type::PROC_ARGUMENT || sym->type == symbol_type::PROC_ARRAY_ARGUMENT) {
+        saveVariableFromRegister(reg, free_reg, node);
+      }
+    }
+  }
+
+  // load jump back address and jump
+  auto sym = current_symbol_table_->getProcedureJumpBackMemoryAddressSymbol();
+  auto reg = findFreeRegister(node);
+  getValueIntoRegister(sym->mem_start, reg, node);
+  node->code_list_.push_back("LOAD " + reg->register_name_);
+  node->code_list_.push_back("INC a");
+  node->code_list_.push_back("INC a");
+  node->code_list_.push_back("JUMPR a");
+  long long int code_size_after_generation = node->code_list_.size();
+  current_start_line_ += code_size_after_generation - code_size_before_generation;
 }
 
 // TODO(Jakub Drzewiecki): Possible missing handling which variable is in accumulator (could be other registers too)
@@ -587,8 +638,10 @@ void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
   }
 
   // pass current line number in register h
-  node->code_list_.push_back("STRK h");
+  node->code_list_.push_back("STRK a");
   // add procedure call
-  // TODO(Jakub Drzewiecki): Add lines numbers calculations to make procedures calls possible
-  node->code_list_.push_back("JUMP ");
+  int i = 0;
+  for(; i < procedures_names_.size(); i++) {}
+  auto proc_node_start = procedures_start_nodes_.at(i);
+  node->code_list_.push_back("JUMP " + std::to_string(proc_node_start->start_line_));
 }

@@ -17,6 +17,7 @@ typedef struct symbol {
   bool initialized;
   long long int mem_start;
   unsigned long long int length;
+  bool proc_jump_back_mem = false;
 } Symbol;
 
 #endif  // CUSTOMCOMPILER_COMPILER_SYMBOL_H_
