@@ -22,11 +22,9 @@ void CodeGenerator::generateFlowGraph(Procedure main, std::vector<Procedure> pro
 
 }
 
-// TODO(Jakub Drzewiecki): Add jumps at the end of procedures, add jump at the start of program to main
 void CodeGenerator::generateCode() {
   bool first_proc = true;
   for(auto proc_start : procedures_start_nodes_) {
-    // TODO(Jakub Drzewiecki): Update line starts after generating procedures starts and ends
     if(first_proc) {
       current_start_line_ = 1;
       generate_jump_to_main_ = true;
@@ -589,7 +587,15 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     another_free_reg->curr_variable = nullptr;
     another_free_reg->variable_saved_ = true;
   } else {
-    // TODO(Jakub Drzewiecki): if any var updated, all loaded arrays indexed with this variable are not stored any more
+    if(command->left_var_.type == variable_type::VAR) {
+      for (auto reg : registers_) {
+        if(reg->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
+        reg->curr_variable->getIndexVariableName() == command->left_var_.getVariableName()) {
+          reg->curr_variable = nullptr;
+          reg->variable_saved_ = true;
+        }
+      }
+    }
     accumulator_->curr_variable = std::make_shared<VariableContainer>(command->left_var_);
     accumulator_->variable_saved_ = false;
     accumulator_->currently_used_ = false;
