@@ -134,21 +134,28 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
       handleProcedureCallCommand(procedure_call_command, node);
     }
   }
-
-  // put condition to code
-
   long long int code_length_after_generation = node->code_list_.size();
   current_start_line_ += code_length_after_generation - code_length_before_generation;
-  if(node->jump_line_target) {
-    current_start_line_++;
+
+  // put condition to code
+  if(node->cond) {
+    node->condition_start_line_ = current_start_line_ + 1;
+    current_start_line_ += node->cond->getConditionCodeSize();
   }
   // generate left node code
   // generate right node code
   // TODO(Jakub Drzewiecki): Handle registers states after left/right branch if there is if/else block following
   if(node->left_node != nullptr)
     generateCodePreorder(node->left_node);
+  if(node->cond) {
+    generateCondition(node);
+  }
   if(node->right_node != nullptr)
     generateCodePreorder(node->right_node);
+
+  if(node->jump_line_target || node->jump_condition_target) {
+    current_start_line_++;
+  }
 }
 
 void CodeGenerator::generateProcedureStart(std::shared_ptr<GraphNode> node) {
@@ -296,6 +303,7 @@ void CodeGenerator::moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> nod
  *
  * @param node Current flow graph node in which code might be generated.
  * @return Register that can be used later in computations and is not already chosen for them.
+ * @TODO(Jakub Drzewiecki): Target using registers that do not have procedures' arguments loaded
  */
 std::shared_ptr<Register> CodeGenerator::findFreeRegister(std::shared_ptr<GraphNode> node) {
   std::shared_ptr<Register> chosen_reg = nullptr;
@@ -523,10 +531,8 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
       loaded_vars++;
       searched_reg_var->currently_used_ = true;
       searched_variables_in_regs.push_back(searched_reg_var);
-      if(searched_reg_var->register_name_ == "a") {
-        if(i == needed_variables.size() - 1) {
-          last_var_loaded_in_acc = true;
-        }
+      if(searched_reg_var->register_name_ == "a" && i == needed_variables.size() - 1) {
+        last_var_loaded_in_acc = true;
       }
     }
   }
@@ -644,4 +650,52 @@ void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
   for(; i < procedures_names_.size(); i++) {}
   auto proc_node_start = procedures_start_nodes_.at(i);
   node->code_list_.push_back("JUMP " + std::to_string(proc_node_start->start_line_));
+}
+
+void CodeGenerator::generateCondition(std::shared_ptr<GraphNode> node) {
+  std::vector<VariableContainer> needed_variables = node->cond->neededVariablesInRegisters();
+  // search if any of the variables are already loaded and reserve the registers
+  bool last_var_loaded_in_acc = false;
+  int loaded_vars = 0;
+  std::vector<std::shared_ptr<Register>> searched_variables_in_regs;
+  for(int i = 0; i < needed_variables.size(); i++) {
+    auto var = needed_variables.at(i);
+    std::shared_ptr<Register> searched_reg_var = checkVariableAlreadyLoaded(var);
+    if(searched_reg_var) {
+      loaded_vars++;
+      searched_reg_var->currently_used_ = true;
+      searched_variables_in_regs.push_back(searched_reg_var);
+      if(searched_reg_var->register_name_ == "a" && i == needed_variables.size() - 1) {
+        last_var_loaded_in_acc = true;
+      }
+    }
+  }
+  if(!last_var_loaded_in_acc || loaded_vars != needed_variables.size() - 1) {
+    moveAccumulatorToFreeRegister(node);
+  }
+  // store vals in registers in good order
+  std::vector<std::shared_ptr<Register>> prepared_registers;
+  for(int i = 0; i < needed_variables.size() - 1; i++) {
+    prepared_registers.push_back(loadVariable(needed_variables.at(i), nullptr, node));
+  }
+  // store accumulator variable last in vector
+  loadVariable(needed_variables.at(needed_variables.size() - 1), accumulator_, node);
+  prepared_registers.push_back(accumulator_);
+  std::shared_ptr<Register> free_reg = findFreeRegister(node);
+  prepared_registers.push_back(free_reg);
+  // generate condition code here
+  std::vector<std::string> generated_code =
+      node->cond->generateCondition(prepared_registers,
+                                    node->left_node->start_line_,
+                                    current_start_line_);
+
+  for(auto gen_command : generated_code) {
+    node->code_list_.push_back(gen_command);
+  }
+  for(auto reg : searched_variables_in_regs) {
+    reg->currently_used_ = false;
+  }
+  for(auto reg : prepared_registers) {
+    reg->currently_used_ = false;
+  }
 }

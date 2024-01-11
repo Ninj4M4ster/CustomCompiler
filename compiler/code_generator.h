@@ -52,7 +52,6 @@ class CodeGenerator {
                                 std::shared_ptr<Register> other_free_reg,
                                 std::shared_ptr<GraphNode> node);
   void moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> node);
-  // this method should find free register or make one free register ; freeing register is done using A register
   std::shared_ptr<Register> findFreeRegister(std::shared_ptr<GraphNode> node);
   void getValueIntoRegister(long long int value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node);
   std::shared_ptr<Register> checkVariableAlreadyLoaded(VariableContainer var);
@@ -65,6 +64,10 @@ class CodeGenerator {
   void handleReadCommand(ReadCommand* command, std::shared_ptr<GraphNode> node);
   void handleWriteCommand(WriteCommand* command, std::shared_ptr<GraphNode> node);
   void handleProcedureCallCommand(ProcedureCallCommand* command, std::shared_ptr<GraphNode> node);
+
+  // conditions handling
+  void generateCondition(std::shared_ptr<GraphNode> node);
+  void copyRegisters();
 };
 
 #endif //CUSTOMCOMPILER_COMPILER_CODE_GENERATOR_H_

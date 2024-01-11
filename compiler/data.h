@@ -268,9 +268,70 @@ class Condition {
   condition_type type_;
   VariableContainer* left_var_;
   VariableContainer* right_var_;
+  std::vector<VariableContainer> neededVariablesInRegisters() {
+    if(type_ == condition_type::GT) {
+      return {*left_var_, *right_var_};
+    }
+    return {*right_var_, *left_var_};
+  }
+
+  long long int getConditionCodeSize() {
+    switch(type_) {
+      case condition_type::EQ:
+        return 6;
+      case condition_type::NEQ:
+        return 6;
+      case condition_type::GT:
+        return 3;
+      case condition_type::GE:
+        return 3;
+    }
+    return 0;
+  }
+
+  std::vector<std::string> generateCondition(std::vector<std::shared_ptr<Register>> registers,
+                                             long long int target_block_start_line_number,
+                                             long long int next_block_start_line_number) {
+    std::vector<std::string> result_code;
+    std::shared_ptr<Register> first = registers.at(0);
+    std::shared_ptr<Register> accumulator = registers.at(1);
+    std::shared_ptr<Register> free_reg = registers.at(2);
+    switch(type_) {
+      case condition_type::EQ:
+        result_code.push_back("PUT " + free_reg->register_name_);
+        free_reg->curr_variable = accumulator->curr_variable;
+        free_reg->variable_saved_ = accumulator->variable_saved_;
+        result_code.push_back("SUB " + first->register_name_);
+        result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
+        result_code.push_back("GET " + first->register_name_);
+        result_code.push_back("SUB " + free_reg->register_name_);
+        result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
+        accumulator->variable_saved_ = true;
+        accumulator->curr_variable = nullptr;
+      case condition_type::NEQ:
+        result_code.push_back("PUT " + free_reg->register_name_);
+        free_reg->curr_variable = accumulator->curr_variable;
+        free_reg->variable_saved_ = accumulator->variable_saved_;
+        result_code.push_back("SUB " + first->register_name_);
+        result_code.push_back("JPOS " + std::to_string(target_block_start_line_number));
+        result_code.push_back("GET " + first->register_name_);
+        result_code.push_back("SUB " + free_reg->register_name_);
+        result_code.push_back("JZERO " + std::to_string(next_block_start_line_number));
+        accumulator->variable_saved_ = true;
+        accumulator->curr_variable = nullptr;
+      case condition_type::GT:
+        result_code.push_back("INC " + accumulator->register_name_);
+        result_code.push_back("SUB " + first->register_name_);
+        result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
+      case condition_type::GE:
+        result_code.push_back("INC " + accumulator->register_name_);
+        result_code.push_back("SUB " + first->register_name_);
+        result_code.push_back("JZERO " + std::to_string(next_block_start_line_number));
+    }
+    return result_code;
+  }
 };
 
-// TODO(Jakub Drzewiecki): To pass args by reference, it is needed to pass memory addresses of the arguments
 typedef struct procedure_argument {
   std::string name;
   enum symbol_type type;
