@@ -22,6 +22,8 @@ class GraphNode {
   std::shared_ptr<GraphNode> jump_condition_target = nullptr;
   // length of code in this node
   long long int node_length_ = 0;
+
+  std::string proc_name;
 };
 
 class CodeGenerator {
@@ -29,12 +31,14 @@ class CodeGenerator {
   CodeGenerator();
   void generateFlowGraph(Procedure main, std::vector<Procedure> procedures);
   void generateCode();
+  std::vector<std::shared_ptr<GraphNode>> getGraphs();
 
  private:
   std::shared_ptr<GraphNode> generateSingleFlowGraph(Procedure proc);
   void process_commands(std::vector<Command*> comms, std::shared_ptr<GraphNode> curr_node);
   std::shared_ptr<GraphNode> start_node;
   std::shared_ptr<SymbolTable> current_symbol_table_;
+  std::vector<std::shared_ptr<SymbolTable>> symbol_tables_;
   std::vector<std::shared_ptr<GraphNode>> procedures_start_nodes_;
   std::vector<std::string> procedures_names_;
 
@@ -54,8 +58,8 @@ class CodeGenerator {
   void moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> node);
   std::shared_ptr<Register> findFreeRegister(std::shared_ptr<GraphNode> node);
   void getValueIntoRegister(long long int value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node);
-  std::shared_ptr<Register> checkVariableAlreadyLoaded(VariableContainer var);
-  std::shared_ptr<Register> loadVariable(VariableContainer var,
+  std::shared_ptr<Register> checkVariableAlreadyLoaded(VariableContainer* var);
+  std::shared_ptr<Register> loadVariable(VariableContainer* var,
                                          std::shared_ptr<Register> target_reg,
                                          std::shared_ptr<GraphNode> node);
 

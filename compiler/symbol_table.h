@@ -16,6 +16,7 @@ class SymbolTable {
   void addProcJumpBackMemoryAddress(Symbol new_symbol);
   std::shared_ptr<Symbol> findSymbol(std::string symbol_name);
   std::shared_ptr<Symbol> getProcedureJumpBackMemoryAddressSymbol();
+  void output_symbols();
 
  private:
   std::vector<std::shared_ptr<Symbol>> symbol_table_list_;

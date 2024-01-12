@@ -68,7 +68,7 @@ class Register {
   bool currently_used_ = false;
   bool variable_saved_ = true;
   std::string register_name_;
-  std::shared_ptr<VariableContainer> curr_variable = nullptr;
+  VariableContainer* curr_variable = nullptr;
 };
 
 enum class expression_type {
@@ -91,8 +91,8 @@ enum class expression_type {
 class DefaultExpression {
  public:
   VariableContainer* var_;
-  virtual std::vector<VariableContainer> neededVariablesInRegisters() {
-    return {*var_};
+  virtual std::vector<VariableContainer*> neededVariablesInRegisters() {
+    return {var_};
   }
 
   // accumulator should be the last register
@@ -116,12 +116,13 @@ class DefaultExpression {
  * ADD b
  *
  * x is in reg a
+ * @TODO(Jakub Drzewiecki): Optimize expressions if they include two constant values.
  */
 class PlusExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
-  std::vector<VariableContainer> neededVariablesInRegisters() override {
-    return {*var_, *right_var_};
+  std::vector<VariableContainer*> neededVariablesInRegisters() override {
+    return {var_, right_var_};
   }
 
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
@@ -149,8 +150,8 @@ class PlusExpression : public DefaultExpression {
 class MinusExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
-  std::vector<VariableContainer> neededVariablesInRegisters() override {
-    return {*right_var_, *var_};
+  std::vector<VariableContainer*> neededVariablesInRegisters() override {
+    return {right_var_, var_};
   }
 
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
@@ -212,8 +213,8 @@ class MinusExpression : public DefaultExpression {
 class MultiplyExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
-  std::vector<VariableContainer> neededVariablesInRegisters() override {
-    return {*var_, *right_var_};
+  std::vector<VariableContainer*> neededVariablesInRegisters() override {
+    return {var_, right_var_};
   }
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long int expression_first_line_number) override {
@@ -309,8 +310,8 @@ class MultiplyExpression : public DefaultExpression {
 class DivideExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
-  std::vector<VariableContainer> neededVariablesInRegisters() override {
-    return {*var_, *right_var_};
+  std::vector<VariableContainer*> neededVariablesInRegisters() override {
+    return {var_, right_var_};
   }
 
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
@@ -406,8 +407,8 @@ class DivideExpression : public DefaultExpression {
 class ModuloExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
-  std::vector<VariableContainer> neededVariablesInRegisters() override {
-    return {*var_, *right_var_};
+  std::vector<VariableContainer*> neededVariablesInRegisters() override {
+    return {var_, right_var_};
   }
 
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
@@ -521,11 +522,11 @@ class Condition {
   condition_type type_;
   VariableContainer* left_var_;
   VariableContainer* right_var_;
-  std::vector<VariableContainer> neededVariablesInRegisters() {
+  std::vector<VariableContainer*> neededVariablesInRegisters() {
     if(type_ == condition_type::GT) {
-      return {*left_var_, *right_var_};
+      return {left_var_, right_var_};
     }
-    return {*right_var_, *left_var_};
+    return {right_var_, left_var_};
   }
 
   long long int getConditionCodeSize() {
@@ -634,7 +635,7 @@ class Command {
  */
 class AssignmentCommand : public Command {
  public:
-  VariableContainer left_var_;
+  VariableContainer* left_var_;
   DefaultExpression expression_;
 };
 
@@ -722,7 +723,7 @@ class ProcedureCallCommand : public Command {
  */
 class ReadCommand : public Command {
  public:
-  VariableContainer var_;
+  VariableContainer* var_;
 };
 
 /**
@@ -733,7 +734,7 @@ class ReadCommand : public Command {
  */
 class WriteCommand : public Command {
  public:
-  VariableContainer written_value_;
+  VariableContainer* written_value_;
 };
 
 typedef struct procedure {

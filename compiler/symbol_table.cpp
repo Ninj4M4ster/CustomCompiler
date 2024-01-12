@@ -33,3 +33,8 @@ std::shared_ptr<Symbol> SymbolTable::getProcedureJumpBackMemoryAddressSymbol() {
   }
   return nullptr;
 }
+
+void SymbolTable::output_symbols() {
+  for(auto s : symbol_table_list_)
+    std::cout << s->symbol_name << std::endl;
+}

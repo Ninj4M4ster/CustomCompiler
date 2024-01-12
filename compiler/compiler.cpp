@@ -1,3 +1,4 @@
+#include <fstream>
 #include "compiler.h"
 
 Compiler::Compiler() {
@@ -12,6 +13,9 @@ void Compiler::setOutputFileName(std::string f_name) {
 void Compiler::compile() {
   code_generator_->generateFlowGraph(main_, procedures_);
   code_generator_->generateCode();
+  std::vector<std::shared_ptr<GraphNode>> graphs_start_nodes = code_generator_->getGraphs();
+  std::cout << "jest kod\n";
+  outputCode(graphs_start_nodes);
 }
 
 void Compiler::declareProcedure(std::vector<Command*> commands) {
@@ -155,7 +159,7 @@ Command *Compiler::createAssignmentCommand(VariableContainer *left_var, DefaultE
   }
   AssignmentCommand* comm = new AssignmentCommand;
   comm->expression_ = *expr;
-  comm->left_var_ = *left_var;
+  comm->left_var_ = left_var;
   comm->type = command_type::ASSIGNMENT;
   return comm;
 }
@@ -211,14 +215,14 @@ Command *Compiler::createReadCommand(VariableContainer *var, int line_number) {
     sym->initialized = true;
   }
   ReadCommand* comm = new ReadCommand;
-  comm->var_ = *var;
+  comm->var_ = var;
   comm->type = command_type::READ;
   return comm;
 }
 
 Command *Compiler::createWriteCommand(VariableContainer *var, int line_number) {
   WriteCommand* comm = new WriteCommand;
-  comm->written_value_ = *var;
+  comm->written_value_ = var;
   comm->type = command_type::WRITE;
   return comm;
 }
@@ -394,6 +398,34 @@ VariableContainer *Compiler::checkVariableInitialization(VariableContainer *var,
     markProcedureArgumentNeedsInitialization(var->getVariableName());
   }
   return var;
+}
+
+void Compiler::outputCode(std::vector<std::shared_ptr<GraphNode>> start_nodes) {
+  std::fstream f;
+  f.open(output_file_name_, std::ios::out);
+  if(start_nodes.size() > 1) {
+    f << "JUMP " << start_nodes.at(start_nodes.size() - 1)->start_line_ << std::endl;
+  }
+  for(auto start_node : start_nodes) {
+    outputGraphRecursively(start_node, f);
+  }
+  f << "HALT" << std::endl;
+  f.close();
+}
+
+void Compiler::outputGraphRecursively(std::shared_ptr<GraphNode> curr_node, std::fstream &f_out) {
+  for(auto line : curr_node->code_list_) {
+    f_out << line << std::endl;
+  }
+  if(curr_node->left_node)
+    outputGraphRecursively(curr_node->left_node, f_out);
+  if(curr_node->right_node)
+    outputGraphRecursively(curr_node->right_node, f_out);
+  if(curr_node->jump_line_target) {
+    f_out << "JUMP " << curr_node->jump_line_target->start_line_ << std::endl;
+  } else if(curr_node->jump_condition_target) {
+    f_out << "JUMP " << curr_node->jump_condition_target->condition_start_line_ << std::endl;
+  }
 }
 
 Symbol Compiler::createSymbol(std::string symbol_name, enum symbol_type type) {

@@ -66,6 +66,8 @@ class Compiler {
   VariableContainer* checkVariableInitialization(VariableContainer* var, int line_number);
 
  private:
+  void outputCode(std::vector<std::shared_ptr<GraphNode>> start_nodes);
+  void outputGraphRecursively(std::shared_ptr<GraphNode> curr_node, std::fstream &f_out);
   // current symbol table used for local declarations, passed to functions objects
   std::shared_ptr<SymbolTable> current_symbol_table_;
 

@@ -5,7 +5,7 @@ CodeGenerator::CodeGenerator() {
   accumulator_ = std::make_shared<Register>();
   accumulator_->register_name_ = "a";
   for(auto name : register_names) {
-    std::shared_ptr<Register> new_reg;
+    std::shared_ptr<Register> new_reg = std::make_shared<Register>();
     new_reg->register_name_ = name;
     registers_.push_back(new_reg);
   }
@@ -13,32 +13,45 @@ CodeGenerator::CodeGenerator() {
 
 void CodeGenerator::generateFlowGraph(Procedure main, std::vector<Procedure> procedures) {
   for(auto proc : procedures) {
-    current_symbol_table_ = proc.symbol_table;
+    symbol_tables_.push_back(proc.symbol_table);
     procedures_start_nodes_.push_back(generateSingleFlowGraph(proc));
     procedures_names_.push_back(proc.head.name);
   }
-  current_symbol_table_ = main.symbol_table;
+  symbol_tables_.push_back(main.symbol_table);
   start_node = generateSingleFlowGraph(main);
-
 }
 
+// TODO(Jakub Drzewiecki): Reset registers after generating code for each procedure
 void CodeGenerator::generateCode() {
   bool first_proc = true;
-  for(auto proc_start : procedures_start_nodes_) {
+  for(int i = 0; i < procedures_start_nodes_.size(); i++) {
+    current_symbol_table_ = symbol_tables_.at(i);
+    auto proc_start = procedures_start_nodes_.at(i);
     if(first_proc) {
       current_start_line_ = 1;
       generate_jump_to_main_ = true;
       first_proc = false;
     }
+    std::cout << "start main\n";
     generateProcedureStart(proc_start);
     generateCodePreorder(proc_start);
+    std::cout << "end\n";
     generateProcedureEnd(proc_start);
   }
+  current_symbol_table_ = symbol_tables_.at(symbol_tables_.size() - 1);
+  current_symbol_table_->output_symbols();
   generateCodePreorder(start_node);
+}
+
+std::vector<std::shared_ptr<GraphNode>> CodeGenerator::getGraphs() {
+  std::vector<std::shared_ptr<GraphNode>> nodes(procedures_start_nodes_);
+  nodes.push_back(start_node);
+  return nodes;
 }
 
 std::shared_ptr<GraphNode> CodeGenerator::generateSingleFlowGraph(Procedure proc) {
   std::shared_ptr<GraphNode> curr_node = std::make_shared<GraphNode>();
+  curr_node->proc_name = proc.head.name;
   process_commands(proc.commands, curr_node);
   return curr_node;
 }
@@ -117,9 +130,12 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
   if(code_length_before_generation == 0)
     node->start_line_ = current_start_line_;
   for(auto comm : node->commands) {
+    std::cout << "s\n";
     if(comm->type == command_type::ASSIGNMENT) {
+      std::cout << "as st\n";
       AssignmentCommand* assignment_command = static_cast<AssignmentCommand*>(comm);
       handleAssignmentCommand(assignment_command, node);
+      std::cout << "as end\n";
     }  // assignment command
     else if(comm->type == command_type::READ) {
       ReadCommand* read_command = static_cast<ReadCommand*>(comm);
@@ -145,6 +161,7 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
   // TODO(Jakub Drzewiecki): Handle registers states after left/right branch if there is if/else block following
   if(node->left_node != nullptr)
     generateCodePreorder(node->left_node);
+  std::cout << "asd\n";
   if(node->cond) {
     generateCondition(node);
   }
@@ -175,7 +192,8 @@ void CodeGenerator::generateProcedureEnd(std::shared_ptr<GraphNode> node) {
   // save all procedure arguments
   auto free_reg = findFreeRegister(node);
   for(auto reg : registers_) {
-    if(reg->curr_variable->type == variable_type::VAR || reg->curr_variable->type == variable_type::ARR) {
+    if(reg->curr_variable &&
+    (reg->curr_variable->type == variable_type::VAR || reg->curr_variable->type == variable_type::ARR)) {
       auto sym = current_symbol_table_->findSymbol(reg->curr_variable->getVariableName());
       if(sym->type == symbol_type::PROC_ARGUMENT || sym->type == symbol_type::PROC_ARRAY_ARGUMENT) {
         saveVariableFromRegister(reg, free_reg, node);
@@ -193,6 +211,15 @@ void CodeGenerator::generateProcedureEnd(std::shared_ptr<GraphNode> node) {
   node->code_list_.push_back("JUMPR a");
   long long int code_size_after_generation = node->code_list_.size();
   current_start_line_ += code_size_after_generation - code_size_before_generation;
+
+  for(auto each_reg : registers_) {
+    each_reg->curr_variable = nullptr;
+    each_reg->variable_saved_ = true;
+    each_reg->currently_used_ = false;
+  }
+  accumulator_->variable_saved_ = true;
+  accumulator_->curr_variable = nullptr;
+  accumulator_->currently_used_ = false;
 }
 
 // TODO(Jakub Drzewiecki): Possible missing handling which variable is in accumulator (could be other registers too)
@@ -205,6 +232,11 @@ void CodeGenerator::saveVariableFromRegister(std::shared_ptr<Register> reg,
     return;
   }
   auto var = reg->curr_variable;
+  if(!var) {
+    reg->curr_variable = nullptr;
+    reg->currently_used_ = false;
+    return;
+  }
   if(var->type == variable_type::R_VAL || var->type == variable_type::VARIABLE_INDEXED_ARR) {
     reg->curr_variable = nullptr;
     reg->currently_used_ = false;
@@ -246,7 +278,7 @@ void CodeGenerator::saveVariableFromRegister(std::shared_ptr<Register> reg,
   reg->currently_used_ = false;
   reg->variable_saved_ = true;
   for(auto other_reg : registers_) {
-    if(other_reg->register_name_ != reg->register_name_ &&
+    if(other_reg->curr_variable && other_reg->register_name_ != reg->register_name_ &&
     other_reg->register_name_ != other_free_reg->register_name_ &&
     other_reg->curr_variable->type == accumulator_->curr_variable->type &&
     other_reg->curr_variable->getVariableName() == accumulator_->curr_variable->getVariableName() &&
@@ -352,6 +384,8 @@ std::shared_ptr<Register> CodeGenerator::findFreeRegister(std::shared_ptr<GraphN
 
 void CodeGenerator::getValueIntoRegister(long long value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node) {
   node->code_list_.push_back("RST " + reg->register_name_);
+  if(value == 0)
+    return;
   unsigned long long int bit = (1LU << 63);
   while(!(value & bit)) {
     bit >>= 1;
@@ -369,29 +403,29 @@ void CodeGenerator::getValueIntoRegister(long long value, std::shared_ptr<Regist
   }
 }
 
-std::shared_ptr<Register> CodeGenerator::checkVariableAlreadyLoaded(VariableContainer var) {
+std::shared_ptr<Register> CodeGenerator::checkVariableAlreadyLoaded(VariableContainer* var) {
   std::shared_ptr<Register> chosen_reg = nullptr;
-  if(var.type == variable_type::VARIABLE_INDEXED_ARR)
+  if(var->type == variable_type::VARIABLE_INDEXED_ARR)
     return chosen_reg;
   for(auto reg : registers_) {
     if(reg->curr_variable) {
       if(reg->curr_variable->type == variable_type::R_VAL &&
-      var.type == variable_type::R_VAL && reg->curr_variable->getValue() == var.getValue()) {
+      var->type == variable_type::R_VAL && reg->curr_variable->getValue() == var->getValue()) {
         chosen_reg = reg;
         break;
-      } else if(reg->curr_variable->type == variable_type::VAR && var.type == variable_type::VAR &&
-      reg->curr_variable->getVariableName() == var.getVariableName()) { // check r values
+      } else if(reg->curr_variable->type == variable_type::VAR && var->type == variable_type::VAR &&
+      reg->curr_variable->getVariableName() == var->getVariableName()) { // check r values
         chosen_reg = reg;
         break;
-      } else if(reg->curr_variable->type == variable_type::ARR && var.type == variable_type::ARR &&
-      reg->curr_variable->getVariableName() == var.getVariableName() &&
-      reg->curr_variable->getValue() == var.getValue()) {
+      } else if(reg->curr_variable->type == variable_type::ARR && var->type == variable_type::ARR &&
+      reg->curr_variable->getVariableName() == var->getVariableName() &&
+      reg->curr_variable->getValue() == var->getValue()) {
         chosen_reg = reg;
         break;
       } else if(reg->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
-          var.type == variable_type::VARIABLE_INDEXED_ARR &&
-          reg->curr_variable->getVariableName() == var.getVariableName() &&
-          reg->curr_variable->getIndexVariableName() == var.getIndexVariableName()) {
+          var->type == variable_type::VARIABLE_INDEXED_ARR &&
+          reg->curr_variable->getVariableName() == var->getVariableName() &&
+          reg->curr_variable->getIndexVariableName() == var->getIndexVariableName()) {
         chosen_reg = reg;
         break;
       }
@@ -400,19 +434,19 @@ std::shared_ptr<Register> CodeGenerator::checkVariableAlreadyLoaded(VariableCont
   if(!chosen_reg) {
     if(accumulator_->curr_variable) {
       if(accumulator_->curr_variable->type == variable_type::R_VAL &&
-          var.type == variable_type::R_VAL && accumulator_->curr_variable->getValue() == var.getValue()) {
+          var->type == variable_type::R_VAL && accumulator_->curr_variable->getValue() == var->getValue()) {
         chosen_reg = accumulator_;
-      } else if(accumulator_->curr_variable->type == variable_type::VAR && var.type == variable_type::VAR &&
-          accumulator_->curr_variable->getVariableName() == var.getVariableName()) { // check r values
+      } else if(accumulator_->curr_variable->type == variable_type::VAR && var->type == variable_type::VAR &&
+          accumulator_->curr_variable->getVariableName() == var->getVariableName()) { // check r values
         chosen_reg = accumulator_;
-      } else if(accumulator_->curr_variable->type == variable_type::ARR && var.type == variable_type::ARR &&
-          accumulator_->curr_variable->getVariableName() == var.getVariableName() &&
-          accumulator_->curr_variable->getValue() == var.getValue()) {
+      } else if(accumulator_->curr_variable->type == variable_type::ARR && var->type == variable_type::ARR &&
+          accumulator_->curr_variable->getVariableName() == var->getVariableName() &&
+          accumulator_->curr_variable->getValue() == var->getValue()) {
         chosen_reg = accumulator_;
       } else if(accumulator_->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
-          var.type == variable_type::VARIABLE_INDEXED_ARR &&
-          accumulator_->curr_variable->getVariableName() == var.getVariableName() &&
-          accumulator_->curr_variable->getIndexVariableName() == var.getIndexVariableName()) {
+          var->type == variable_type::VARIABLE_INDEXED_ARR &&
+          accumulator_->curr_variable->getVariableName() == var->getVariableName() &&
+          accumulator_->curr_variable->getIndexVariableName() == var->getIndexVariableName()) {
         chosen_reg = accumulator_;
       }
     }
@@ -422,7 +456,7 @@ std::shared_ptr<Register> CodeGenerator::checkVariableAlreadyLoaded(VariableCont
 
 // TODO(Jakub Drzewiecki): Some refactor can still be done, but it is a job for later.
 //  Current version of this function should work properly
-std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer var,
+std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer* var,
                                                       std::shared_ptr<Register> target_reg,
                                                       std::shared_ptr<GraphNode> node) {
   std::shared_ptr<Register> reg_with_loaded_var = checkVariableAlreadyLoaded(var);
@@ -453,12 +487,12 @@ std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer var,
       target_reg = findFreeRegister(node);
       target_reg->currently_used_ = true;
     }
-    if(var.type == variable_type::R_VAL) {
-      getValueIntoRegister(var.getValue(), target_reg, node);
+    if(var->type == variable_type::R_VAL) {
+      getValueIntoRegister(var->getValue(), target_reg, node);
       if(target_reg->register_name_ != "a")
         node->code_list_.push_back("PUT " + target_reg->register_name_);
-    } else if(var.type == variable_type::VAR) {
-      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
+    } else if(var->type == variable_type::VAR) {
+      auto sym = current_symbol_table_->findSymbol(var->getVariableName());
       getValueIntoRegister(sym->mem_start, target_reg, node);
       node->code_list_.push_back("LOAD " + target_reg->register_name_);
       if(sym->type == symbol_type::PROC_ARGUMENT) {  // load again, because variable address is stored in memory
@@ -466,33 +500,33 @@ std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer var,
       }
       if(target_reg->register_name_ != "a")
         node->code_list_.push_back("PUT " + target_reg->register_name_);
-    } else if(var.type == variable_type::ARR) {
-      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
+    } else if(var->type == variable_type::ARR) {
+      auto sym = current_symbol_table_->findSymbol(var->getVariableName());
       if(sym->type == symbol_type::ARR) {
-        getValueIntoRegister(sym->mem_start + var.getValue(), target_reg, node);
+        getValueIntoRegister(sym->mem_start + var->getValue(), target_reg, node);
         node->code_list_.push_back("LOAD " + target_reg->register_name_);
         if(target_reg->register_name_ != "a")
           node->code_list_.push_back("PUT " + target_reg->register_name_);
       } else {  // array is a procedure argument
         getValueIntoRegister(sym->mem_start, target_reg, node);
         node->code_list_.push_back("LOAD " + target_reg->register_name_);
-        getValueIntoRegister(var.getValue(), target_reg, node);
+        getValueIntoRegister(var->getValue(), target_reg, node);
         node->code_list_.push_back("ADD " + target_reg->register_name_);
         node->code_list_.push_back("LOAD " + accumulator_->register_name_);
         if(target_reg->register_name_ != "a")
           node->code_list_.push_back("PUT " + target_reg->register_name_);
       }
-    } else if(var.type == variable_type::VARIABLE_INDEXED_ARR) {
-      auto sym = current_symbol_table_->findSymbol(var.getVariableName());
+    } else if(var->type == variable_type::VARIABLE_INDEXED_ARR) {
+      auto sym = current_symbol_table_->findSymbol(var->getVariableName());
       // firstly load index variable
-      Variable index_var;
-      index_var.type = variable_type::VAR;
-      index_var.var_name = var.getIndexVariableName();
+      Variable* index_var = new Variable;
+      index_var->type = variable_type::VAR;
+      index_var->var_name = var->getIndexVariableName();
       target_reg->currently_used_ = false;
       target_reg = checkVariableAlreadyLoaded(index_var);
       if(!target_reg) {
         target_reg = findFreeRegister(node);
-        auto index_var_sym = current_symbol_table_->findSymbol(index_var.getVariableName());
+        auto index_var_sym = current_symbol_table_->findSymbol(index_var->getVariableName());
         getValueIntoRegister(index_var_sym->mem_start, target_reg, node);
         node->code_list_.push_back("LOAD " + target_reg->register_name_);
         if(index_var_sym->type == symbol_type::PROC_ARGUMENT) {
@@ -528,7 +562,7 @@ std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer var,
         target_reg->currently_used_ = false;
       }
     }
-    target_reg->curr_variable = std::make_shared<VariableContainer>(var);
+    target_reg->curr_variable = var;
     target_reg->currently_used_ = false;
     target_reg->variable_saved_ = true;
   }
@@ -536,11 +570,12 @@ std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer var,
 }
 
 void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::shared_ptr<GraphNode> node) {
-  std::vector<VariableContainer> needed_variables = command->expression_.neededVariablesInRegisters();
+  std::vector<VariableContainer*> needed_variables = command->expression_.neededVariablesInRegisters();
   // search if any of the variables are already loaded and reserve the registers
   std::vector<std::shared_ptr<Register>> searched_variables_in_regs;
   for(int i = 0; i < needed_variables.size(); i++) {
     auto var = needed_variables.at(i);
+    std::cout << var->getVariableName() << std::endl;
     std::shared_ptr<Register> searched_reg_var = checkVariableAlreadyLoaded(var);
     if(searched_reg_var) {
       searched_reg_var->currently_used_ = true;
@@ -548,6 +583,7 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     }
   }
   moveAccumulatorToFreeRegister(node);
+  std::cout << "moved\n";
 
   // store vals in registers in good order
   // TODO(Jakub Drzewiecki): Save variables before expressions that needs them saved
@@ -571,19 +607,19 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     node->code_list_.push_back(generated_code);
   }
   // save variable indexed arrays since such value cannot be kept in registers, no chance of saving them later
-  if(command->left_var_.type == variable_type::VARIABLE_INDEXED_ARR) {
+  if(command->left_var_->type == variable_type::VARIABLE_INDEXED_ARR) {
     // TODO(Jakub Drzewiecki): New flag not to delete value that is currently in saving process
     std::shared_ptr<Register> free_reg = findFreeRegister(node);
     free_reg->currently_used_ = true;
     node->code_list_.push_back("PUT " + free_reg->register_name_);
     free_reg->variable_saved_ = false;
-    free_reg->curr_variable = std::make_shared<VariableContainer>(command->left_var_);
-    auto sym = current_symbol_table_->findSymbol(command->left_var_.getIndexVariableName());
-    Variable var;
-    var.type = variable_type::VAR;
-    var.var_name = command->left_var_.getIndexVariableName();
+    free_reg->curr_variable = command->left_var_;
+    auto sym = current_symbol_table_->findSymbol(command->left_var_->getIndexVariableName());
+    Variable* var = new variable;
+    var->type = variable_type::VAR;
+    var->var_name = command->left_var_->getIndexVariableName();
     auto var_ind_sym =
-        current_symbol_table_->findSymbol(command->left_var_.getIndexVariableName());
+        current_symbol_table_->findSymbol(command->left_var_->getIndexVariableName());
     std::shared_ptr<Register> another_free_reg = checkVariableAlreadyLoaded(var);
     if(!another_free_reg) {
       another_free_reg = loadVariable(var, nullptr, node);  // process arguments variables should be already handled
@@ -599,35 +635,35 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     node->code_list_.push_back("STORE " + another_free_reg->register_name_);
     free_reg->currently_used_ = false;
     free_reg->variable_saved_ = true;
-    accumulator_->curr_variable = std::make_shared<VariableContainer>(command->left_var_);
+    accumulator_->curr_variable = command->left_var_;
     accumulator_->currently_used_ = false;
     accumulator_->variable_saved_ = true;
     another_free_reg->currently_used_ = false;
     another_free_reg->curr_variable = nullptr;
     another_free_reg->variable_saved_ = true;
   } else {
-    if(command->left_var_.type != variable_type::R_VAL) {
+    if(command->left_var_->type != variable_type::R_VAL) {
       for(auto reg : registers_) {
-        if(reg->curr_variable && reg->curr_variable->type == command->left_var_.type &&
-        reg->curr_variable->getVariableName() == command->left_var_.getVariableName() &&
-        reg->curr_variable->getValue() == command->left_var_.getValue() &&
-        reg->curr_variable->getIndexVariableName() == command->left_var_.getIndexVariableName()) {
+        if(reg->curr_variable && reg->curr_variable->type == command->left_var_->type &&
+        reg->curr_variable->getVariableName() == command->left_var_->getVariableName() &&
+        reg->curr_variable->getValue() == command->left_var_->getValue() &&
+        reg->curr_variable->getIndexVariableName() == command->left_var_->getIndexVariableName()) {
           reg->curr_variable = nullptr;
           reg->variable_saved_ = true;
           reg->currently_used_ = false;
         }
       }
     }
-    if(command->left_var_.type == variable_type::VAR) {
+    if(command->left_var_->type == variable_type::VAR) {
       for (auto reg : registers_) {
-        if(reg->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
-        reg->curr_variable->getIndexVariableName() == command->left_var_.getVariableName()) {
+        if(reg->curr_variable && reg->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
+        reg->curr_variable->getIndexVariableName() == command->left_var_->getVariableName()) {
           reg->curr_variable = nullptr;
           reg->variable_saved_ = true;
         }
       }
     }
-    accumulator_->curr_variable = std::make_shared<VariableContainer>(command->left_var_);
+    accumulator_->curr_variable = command->left_var_;
     accumulator_->variable_saved_ = false;
     accumulator_->currently_used_ = false;
   }
@@ -639,21 +675,23 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
 void CodeGenerator::handleReadCommand(ReadCommand *command, std::shared_ptr<GraphNode> node) {
   moveAccumulatorToFreeRegister(node);
   node->code_list_.push_back("READ");
-  accumulator_->curr_variable = std::make_shared<VariableContainer>(command->var_);
+  accumulator_->curr_variable = command->var_;
 }
 
 void CodeGenerator::handleWriteCommand(WriteCommand *command, std::shared_ptr<GraphNode> node) {
   std::shared_ptr<Register> reg = checkVariableAlreadyLoaded(command->written_value_);
-  reg->currently_used_ = true;
   if(!reg) {
     moveAccumulatorToFreeRegister(node);
     loadVariable(command->written_value_, accumulator_, node);
+    std::cout << "wad\n";
   } else {
+    reg->currently_used_ = true;
     if(reg->register_name_ != "a") {
       moveAccumulatorToFreeRegister(node);
       node->code_list_.push_back("GET " + reg->register_name_);
     }
   }
+  std::cout << "wad\n";
   node->code_list_.push_back("WRITE");
 }
 
@@ -681,13 +719,17 @@ void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
   node->code_list_.push_back("STRK a");
   // add procedure call
   int i = 0;
-  for(; i < procedures_names_.size(); i++) {}
+  for(; i < procedures_names_.size(); i++) {
+    if(procedures_names_.at(i) == procedures_start_nodes_.at(i)->proc_name) {
+      break;
+    }
+  }
   auto proc_node_start = procedures_start_nodes_.at(i);
   node->code_list_.push_back("JUMP " + std::to_string(proc_node_start->start_line_));
 }
 
 void CodeGenerator::generateCondition(std::shared_ptr<GraphNode> node) {
-  std::vector<VariableContainer> needed_variables = node->cond->neededVariablesInRegisters();
+  std::vector<VariableContainer*> needed_variables = node->cond->neededVariablesInRegisters();
   // search if any of the variables are already loaded and reserve the registers
   bool last_var_loaded_in_acc = false;
   int loaded_vars = 0;

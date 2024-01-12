@@ -1,6 +1,6 @@
 FLAGS = -std=c++17 -O3
 
-compiler: lexer.o parser.o flow_graph.o symbol_table.o compiler.o
+compiler: lexer.o parser.o code_generator.o symbol_table.o compiler.o
 	$(CXX) $^ -o $@
 	strip $@
 
