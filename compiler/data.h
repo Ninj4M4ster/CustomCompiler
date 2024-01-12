@@ -221,7 +221,7 @@ class MultiplyExpression : public DefaultExpression {
     std::shared_ptr<Register> acc_reg = regs.at(1);
     std::shared_ptr<Register> right_var_reg = regs.at(2);
     std::shared_ptr<Register> iterator_reg = regs.at(3);
-    std::shared_ptr<Register> result_reg = regs.at(0);
+    std::shared_ptr<Register> result_reg = regs.at(4);
     std::vector<std::string> result_code {
       "PUT " + right_var_reg->register_name_,
       "INC " + acc_reg->register_name_,
@@ -266,6 +266,44 @@ class MultiplyExpression : public DefaultExpression {
 /**
  * x := var_ / right_var_
  *
+ * var in reg_b
+ * right_var in reg_a
+ * reg_c for right_var
+ * reg_d for result
+ * reg_f for iterator
+ *
+ * PUT reg_c
+ * RST reg_d
+ * GET reg_b  # if right_var > var return 0
+ * INC reg_a
+ * SUB reg_c
+ * JPOS end_of_division
+ * GET reg_c  # if right_var == 0 return 0
+ * JZERO end_of_division
+ * RST reg_f
+ * INC reg_f
+ * GET reg_b
+ * SHR reg_a  # last_set_bit_pos
+ * SHL reg_c
+ * SHL reg_f
+ * JPOS last_set_bit_pos
+ * SHR reg_c  # main_loop
+ * SHR reg_f
+ * GET reg_f
+ * JZERO end_of_division
+ * GET reg_b
+ * INC reg_a
+ * SUB reg_c
+ * JZERO main_loop
+ * GET reg_b
+ * SUB reg_c
+ * PUT reg_b
+ * GET reg_d
+ * ADD reg_f
+ * PUT reg_d
+ * JUMP main_loop
+ * GET reg_d  # end_of_division
+ *
  * x is in reg a
  */
 class DivideExpression : public DefaultExpression {
@@ -273,6 +311,53 @@ class DivideExpression : public DefaultExpression {
   VariableContainer* right_var_;
   std::vector<VariableContainer> neededVariablesInRegisters() override {
     return {*var_, *right_var_};
+  }
+
+  std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
+                                               long long expression_first_line_number) override {
+    std::shared_ptr<Register> var_reg = regs.at(0);
+    std::shared_ptr<Register> acc_reg = regs.at(1);
+    std::shared_ptr<Register> right_var_reg = regs.at(2);
+    std::shared_ptr<Register> iterator_reg = regs.at(3);
+    std::shared_ptr<Register> result_reg = regs.at(4);
+    std::vector<std::string> result_code {
+      "PUT " + right_var_reg->register_name_,
+      "RST " + result_reg->register_name_,
+      "GET " + var_reg->register_name_,
+      "INC " + acc_reg->register_name_,
+      "SUB " + right_var_reg->register_name_,
+      "JPOS " + std::to_string(expression_first_line_number + 30),
+      "GET " + right_var_reg->register_name_,
+      "JZERO " + std::to_string(expression_first_line_number + 30),
+      "RST " + iterator_reg->register_name_,
+      "INC " + iterator_reg->register_name_,
+      "GET " + var_reg->register_name_,
+      "SHR " + acc_reg->register_name_,
+      "SHL " + right_var_reg->register_name_,
+      "SHL " + iterator_reg->register_name_,
+      "JPOS " + std::to_string(expression_first_line_number + 11),
+      "SHR " + right_var_reg->register_name_,
+      "SHR " + iterator_reg->register_name_,
+      "GET " + iterator_reg->register_name_,
+      "JZERO " + std::to_string(expression_first_line_number + 30),
+      "GET " + var_reg->register_name_,
+      "INC " + acc_reg->register_name_,
+      "SUB " + right_var_reg->register_name_,
+      "JZERO " + std::to_string(expression_first_line_number + 15),
+      "GET " + var_reg->register_name_,
+      "SUB " + right_var_reg->register_name_,
+      "PUT " + var_reg->register_name_,
+      "GET " + result_reg->register_name_,
+      "ADD " + iterator_reg->register_name_,
+      "PUT " + result_reg->register_name_,
+      "JUMP " + std::to_string(expression_first_line_number + 15),
+      "GET " + result_reg->register_name_
+    };
+    return result_code;
+  }
+
+  int neededEmptyRegs() override {
+    return 3;
   }
  private:
   expression_type type = expression_type::DIVIDE;
