@@ -369,7 +369,6 @@ void CodeGenerator::getValueIntoRegister(long long value, std::shared_ptr<Regist
   }
 }
 
-// TODO(Jakub Drzewiecki): Add checks for variable indexed arrays
 std::shared_ptr<Register> CodeGenerator::checkVariableAlreadyLoaded(VariableContainer var) {
   std::shared_ptr<Register> chosen_reg = nullptr;
   if(var.type == variable_type::VARIABLE_INDEXED_ARR)
@@ -389,6 +388,12 @@ std::shared_ptr<Register> CodeGenerator::checkVariableAlreadyLoaded(VariableCont
       reg->curr_variable->getValue() == var.getValue()) {
         chosen_reg = reg;
         break;
+      } else if(reg->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
+          var.type == variable_type::VARIABLE_INDEXED_ARR &&
+          reg->curr_variable->getVariableName() == var.getVariableName() &&
+          reg->curr_variable->getIndexVariableName() == var.getIndexVariableName()) {
+        chosen_reg = reg;
+        break;
       }
     }
   }
@@ -403,6 +408,11 @@ std::shared_ptr<Register> CodeGenerator::checkVariableAlreadyLoaded(VariableCont
       } else if(accumulator_->curr_variable->type == variable_type::ARR && var.type == variable_type::ARR &&
           accumulator_->curr_variable->getVariableName() == var.getVariableName() &&
           accumulator_->curr_variable->getValue() == var.getValue()) {
+        chosen_reg = accumulator_;
+      } else if(accumulator_->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
+          var.type == variable_type::VARIABLE_INDEXED_ARR &&
+          accumulator_->curr_variable->getVariableName() == var.getVariableName() &&
+          accumulator_->curr_variable->getIndexVariableName() == var.getIndexVariableName()) {
         chosen_reg = accumulator_;
       }
     }
@@ -551,7 +561,6 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
   for(int i = 0; i < command->expression_.neededEmptyRegs(); i++) {
     prepared_registers.push_back(findFreeRegister(node));
   }
-  // TODO(Jakub Drzewiecki): Might need a way to handle adding jump commands
   std::vector<std::string> generated_commands =
       command->expression_.calculateExpression(prepared_registers,
                                                current_start_line_ + node->code_list_.size());
