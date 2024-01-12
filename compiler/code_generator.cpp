@@ -545,9 +545,13 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
   // store accumulator variable last in vector
   loadVariable(needed_variables.at(needed_variables.size() - 1), accumulator_, node);
   prepared_registers.push_back(accumulator_);
+  for(int i = 0; i < command->expression_.neededEmptyRegs(); i++) {
+    prepared_registers.push_back(findFreeRegister(node));
+  }
   // TODO(Jakub Drzewiecki): Might need a way to handle adding jump commands
   std::vector<std::string> generated_commands =
-      command->expression_.calculateExpression(prepared_registers);
+      command->expression_.calculateExpression(prepared_registers,
+                                               current_start_line_ + node->code_list_.size());
   for(auto reg : searched_variables_in_regs) {
     reg->currently_used_ = false;
   }

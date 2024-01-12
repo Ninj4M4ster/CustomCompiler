@@ -94,12 +94,15 @@ class DefaultExpression {
   virtual std::vector<VariableContainer> neededVariablesInRegisters() {
     return {*var_};
   }
-  virtual int needed_regs() {
-    return 0;
-  }
+
   // accumulator should be the last register
-  virtual std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs) {
+  virtual std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
+                                                       long long int expression_first_line_number) {
     return {};
+  }
+
+  virtual int neededEmptyRegs() {
+    return 0;
   }
  private:
   expression_type type = expression_type::DEFAULT;
@@ -120,12 +123,15 @@ class PlusExpression : public DefaultExpression {
   std::vector<VariableContainer> neededVariablesInRegisters() override {
     return {*var_, *right_var_};
   }
-  int needed_regs() override {
-    return 1;
-  }
-  std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs) override {
+
+  std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
+                                               long long int expression_first_line_number) override {
     std::shared_ptr<Register> var_register = regs.at(0);
     return {"ADD " + var_register->register_name_};
+  }
+
+  int neededEmptyRegs() override {
+    return 0;
   }
  private:
   expression_type type = expression_type::PLUS;
@@ -146,12 +152,15 @@ class MinusExpression : public DefaultExpression {
   std::vector<VariableContainer> neededVariablesInRegisters() override {
     return {*right_var_, *var_};
   }
-  int needed_regs() override {
-    return 1;
-  }
-  std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs) override {
+
+  std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
+                                               long long int expression_first_line_number) override {
     std::shared_ptr<Register> right_var_register = regs.at(0);
     return {"SUB " + right_var_register->register_name_};
+  }
+
+  int neededEmptyRegs() override {
+    return 0;
   }
  private:
   expression_type type = expression_type::MINUS;
@@ -160,6 +169,44 @@ class MinusExpression : public DefaultExpression {
 /**
  * x := var_ * right_var_
  *
+ * multiplication requires 5 registers (including accumulator)
+ * var in reg_b
+ * right_var in reg_a
+ * use reg_c to store right_var
+ * use reg_d to store lower value from var and right_var, used as iterator for loop end
+ * use reg_e to store result
+ *
+ * PUT reg_c
+ * INC reg_a
+ * SUB reg_b
+ * JPOS right_var_greater_than_var
+ * GET reg_b  # switch reg_b and reg_c
+ * PUT reg_e
+ * GET reg_c
+ * PUT reg_b
+ * GET reg_e
+ * PUT reg_c
+ * GET reg_b  # check if value of lesser variable is 0 at start, right_var_greater_than_var
+ * JZERO end_of_multiplication  (result is 0)
+ * PUT reg_d
+ * RST reg_e
+ * GET reg_d  # multiplication_start
+ * JZERO parse_result
+ * GET reg_d
+ * SHR reg_b
+ * SHL reg_b
+ * SUB reg_b
+ * SHR reg_d
+ * SHR reg_b
+ * JZERO shift_left_added_value (last bit of reg_b is zero)
+ * GET reg_e
+ * ADD reg_c
+ * PUT reg_e
+ * SHL reg_c  # shift_left_added_value
+ * JUMP multiplication_start
+ * GET reg_e  # parse_result
+ * end_of_multiplication
+ *
  * x is in reg a
  */
 class MultiplyExpression : public DefaultExpression {
@@ -167,6 +214,50 @@ class MultiplyExpression : public DefaultExpression {
   VariableContainer* right_var_;
   std::vector<VariableContainer> neededVariablesInRegisters() override {
     return {*var_, *right_var_};
+  }
+  std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
+                                               long long int expression_first_line_number) override {
+    std::shared_ptr<Register> var_reg = regs.at(0);
+    std::shared_ptr<Register> acc_reg = regs.at(1);
+    std::shared_ptr<Register> right_var_reg = regs.at(2);
+    std::shared_ptr<Register> iterator_reg = regs.at(3);
+    std::shared_ptr<Register> result_reg = regs.at(0);
+    std::vector<std::string> result_code {
+      "PUT " + right_var_reg->register_name_,
+      "INC " + acc_reg->register_name_,
+      "SUB " + var_reg->register_name_,
+      "JPOS " + std::to_string(expression_first_line_number + 10),
+      "GET " + var_reg->register_name_,
+      "PUT " + result_reg->register_name_,
+      "GET " + right_var_reg->register_name_,
+      "PUT " + var_reg->register_name_,
+      "GET " + result_reg->register_name_,
+      "PUT " + right_var_reg->register_name_,
+      "GET " + var_reg->register_name_,
+      "JZERO " + std::to_string(expression_first_line_number + 29),
+      "PUT " + iterator_reg->register_name_,
+      "RST " + result_reg->register_name_,
+      "GET " + iterator_reg->register_name_,
+      "JZERO " + std::to_string(expression_first_line_number + 28),
+      "GET " + iterator_reg->register_name_,
+      "SHR " + var_reg->register_name_,
+      "SHL " + var_reg->register_name_,
+      "SUB " + var_reg->register_name_,
+      "SHR " + iterator_reg->register_name_,
+      "SHR " + var_reg->register_name_,
+      "JZERO " + std::to_string(expression_first_line_number + 26),
+      "GET " + result_reg->register_name_,
+      "ADD " + right_var_reg->register_name_,
+      "PUT " + result_reg->register_name_,
+      "SHL " + right_var_reg->register_name_,
+      "JUMP " + std::to_string(expression_first_line_number + 14),
+      "GET " + result_reg->register_name_
+    };
+    return result_code;
+  }
+
+  int neededEmptyRegs() override {
+    return 3;
   }
  private:
   expression_type type = expression_type::MULTIPLY;
