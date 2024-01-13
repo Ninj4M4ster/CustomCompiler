@@ -128,7 +128,7 @@ class PlusExpression : public DefaultExpression {
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long int expression_first_line_number) override {
     std::shared_ptr<Register> var_register = regs.at(0);
-    return {"ADD " + var_register->register_name_};
+    return {"ADD " + var_register->register_name_ + " # add " + var_->getVariableName() + " + " + right_var_->getVariableName()};
   }
 
   int neededEmptyRegs() override {
@@ -157,7 +157,7 @@ class MinusExpression : public DefaultExpression {
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long int expression_first_line_number) override {
     std::shared_ptr<Register> right_var_register = regs.at(0);
-    return {"SUB " + right_var_register->register_name_};
+    return {"SUB " + right_var_register->register_name_  + " # add " + var_->getVariableName() + " - " + right_var_->getVariableName()};
   }
 
   int neededEmptyRegs() override {
@@ -543,6 +543,34 @@ class Condition {
     return 0;
   }
 
+  void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) {
+    std::shared_ptr<Register> first = registers.at(0);
+    std::shared_ptr<Register> accumulator = registers.at(1);
+    std::shared_ptr<Register> free_reg = registers.at(2);
+    switch(type_) {
+      case condition_type::EQ:
+        free_reg->curr_variable = accumulator->curr_variable;
+        free_reg->variable_saved_ = accumulator->variable_saved_;
+        accumulator->variable_saved_ = true;
+        accumulator->curr_variable = nullptr;
+        break;
+      case condition_type::NEQ:
+        free_reg->curr_variable = accumulator->curr_variable;
+        free_reg->variable_saved_ = accumulator->variable_saved_;
+        accumulator->variable_saved_ = true;
+        accumulator->curr_variable = nullptr;
+        break;
+      case condition_type::GT:
+        accumulator->variable_saved_ = true;
+        accumulator->curr_variable = nullptr;
+        break;
+      case condition_type::GE:
+        accumulator->variable_saved_ = true;
+        accumulator->curr_variable = nullptr;
+        break;
+    }
+  }
+
   std::vector<std::string> generateCondition(std::vector<std::shared_ptr<Register>> registers,
                                              long long int target_block_start_line_number,
                                              long long int next_block_start_line_number) {
@@ -552,35 +580,31 @@ class Condition {
     std::shared_ptr<Register> free_reg = registers.at(2);
     switch(type_) {
       case condition_type::EQ:
-        result_code.push_back("PUT " + free_reg->register_name_);
-        free_reg->curr_variable = accumulator->curr_variable;
-        free_reg->variable_saved_ = accumulator->variable_saved_;
+        result_code.push_back("PUT " + free_reg->register_name_ + " # " + left_var_->getVariableName() + " == " + right_var_->getVariableName());
         result_code.push_back("SUB " + first->register_name_);
         result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
         result_code.push_back("GET " + first->register_name_);
         result_code.push_back("SUB " + free_reg->register_name_);
         result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
-        accumulator->variable_saved_ = true;
-        accumulator->curr_variable = nullptr;
+        break;
       case condition_type::NEQ:
-        result_code.push_back("PUT " + free_reg->register_name_);
-        free_reg->curr_variable = accumulator->curr_variable;
-        free_reg->variable_saved_ = accumulator->variable_saved_;
+        result_code.push_back("PUT " + free_reg->register_name_ + " # " + left_var_->getVariableName() + " != " + right_var_->getVariableName());
         result_code.push_back("SUB " + first->register_name_);
         result_code.push_back("JPOS " + std::to_string(target_block_start_line_number));
         result_code.push_back("GET " + first->register_name_);
         result_code.push_back("SUB " + free_reg->register_name_);
         result_code.push_back("JZERO " + std::to_string(next_block_start_line_number));
-        accumulator->variable_saved_ = true;
-        accumulator->curr_variable = nullptr;
+        break;
       case condition_type::GT:
-        result_code.push_back("INC " + accumulator->register_name_);
+        result_code.push_back("INC " + accumulator->register_name_ + " # " + left_var_->getVariableName() + " > " + right_var_->getVariableName());
         result_code.push_back("SUB " + first->register_name_);
         result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
+        break;
       case condition_type::GE:
-        result_code.push_back("INC " + accumulator->register_name_);
+        result_code.push_back("INC " + accumulator->register_name_ + " # " + left_var_->getVariableName() + " >= " + right_var_->getVariableName());
         result_code.push_back("SUB " + first->register_name_);
         result_code.push_back("JZERO " + std::to_string(next_block_start_line_number));
+        break;
     }
     return result_code;
   }
@@ -636,7 +660,7 @@ class Command {
 class AssignmentCommand : public Command {
  public:
   VariableContainer* left_var_;
-  DefaultExpression expression_;
+  DefaultExpression* expression_;
 };
 
 /**

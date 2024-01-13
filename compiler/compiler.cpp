@@ -14,7 +14,6 @@ void Compiler::compile() {
   code_generator_->generateFlowGraph(main_, procedures_);
   code_generator_->generateCode();
   std::vector<std::shared_ptr<GraphNode>> graphs_start_nodes = code_generator_->getGraphs();
-  std::cout << "jest kod\n";
   outputCode(graphs_start_nodes);
 }
 
@@ -158,7 +157,7 @@ Command *Compiler::createAssignmentCommand(VariableContainer *left_var, DefaultE
     sym->initialized = true;
   }
   AssignmentCommand* comm = new AssignmentCommand;
-  comm->expression_ = *expr;
+  comm->expression_ = expr;
   comm->left_var_ = left_var;
   comm->type = command_type::ASSIGNMENT;
   return comm;
@@ -307,6 +306,7 @@ Condition *Compiler::createGreaterEqualCondition(VariableContainer *left_var, Va
   con->type_ = condition_type::GE;
   con->left_var_ = left_var;
   con->right_var_ = right_var;
+  std::cout << "Creating ge " << left_var->getVariableName() << " " << right_var << std::endl;
   return con;
 }
 

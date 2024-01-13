@@ -24,6 +24,8 @@ class GraphNode {
   long long int node_length_ = 0;
 
   std::string proc_name;
+
+  std::vector<std::shared_ptr<Register>> regs_prepared_for_condition;
 };
 
 class CodeGenerator {
@@ -61,7 +63,13 @@ class CodeGenerator {
   std::shared_ptr<Register> checkVariableAlreadyLoaded(VariableContainer* var);
   std::shared_ptr<Register> loadVariable(VariableContainer* var,
                                          std::shared_ptr<Register> target_reg,
-                                         std::shared_ptr<GraphNode> node);
+                                         std::shared_ptr<GraphNode> node,
+                                         bool use_saved_variables);
+
+  std::vector<std::shared_ptr<Register>> saveRegistersState();
+  void loadRegistersState(std::vector<std::shared_ptr<Register>> saved_regs);
+
+  void saveRegistersValues(std::shared_ptr<GraphNode> node);
 
   // commands handling
   void handleAssignmentCommand(AssignmentCommand* command, std::shared_ptr<GraphNode> node);
@@ -70,8 +78,8 @@ class CodeGenerator {
   void handleProcedureCallCommand(ProcedureCallCommand* command, std::shared_ptr<GraphNode> node);
 
   // conditions handling
+  void prepareCondition(std::shared_ptr<GraphNode> node);
   void generateCondition(std::shared_ptr<GraphNode> node);
-  void copyRegisters();
 };
 
 #endif //CUSTOMCOMPILER_COMPILER_CODE_GENERATOR_H_
