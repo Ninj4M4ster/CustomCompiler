@@ -2,7 +2,11 @@ PROCEDURE check(n,d,p) IS
     r
 IN
     p:=0;
+    WRITE n;
+    WRITE d;
     r:=n%d;
+    WRITE r;
+    WRITE n;
     WHILE r=0 DO
         n:=n/d;
         p:=p+1;

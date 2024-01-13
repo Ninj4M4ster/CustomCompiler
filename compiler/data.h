@@ -24,6 +24,9 @@ typedef struct variable_container {
   virtual long long int getValue() {
     return -1;
   }
+  virtual std::string stringify() {
+    return "";
+  }
 } VariableContainer;
 
 typedef struct variable : public VariableContainer {
@@ -31,12 +34,18 @@ typedef struct variable : public VariableContainer {
   std::string getVariableName() override {
     return var_name;
   };
+  std::string stringify() override {
+    return var_name;
+  }
 } Variable;
 
 typedef struct r_value : public VariableContainer {
   long long int value;
   long long getValue() override {
     return value;
+  }
+  std::string stringify() override {
+    return std::to_string(value);
   }
 } RValue;
 
@@ -49,6 +58,9 @@ typedef struct array : public VariableContainer {
   long long getValue() override {
     return index;
   }
+  std::string stringify() override {
+    return var_name + "[" + std::to_string(index) + "]";
+  }
 } Array;
 
 typedef struct variable_indexed_array : public VariableContainer {
@@ -60,6 +72,9 @@ typedef struct variable_indexed_array : public VariableContainer {
   };
   std::string getIndexVariableName() override {
     return index_var_name;
+  }
+  std::string stringify() override {
+    return var_name + "[" + index_var_name + "]";
   }
 } VariableIndexedArray;
 
@@ -128,7 +143,7 @@ class PlusExpression : public DefaultExpression {
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long int expression_first_line_number) override {
     std::shared_ptr<Register> var_register = regs.at(0);
-    return {"ADD " + var_register->register_name_ + " # add " + var_->getVariableName() + " + " + right_var_->getVariableName()};
+    return {"ADD " + var_register->register_name_ + " # add " + var_->stringify() + " + " + right_var_->stringify()};
   }
 
   int neededEmptyRegs() override {
@@ -157,7 +172,7 @@ class MinusExpression : public DefaultExpression {
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long int expression_first_line_number) override {
     std::shared_ptr<Register> right_var_register = regs.at(0);
-    return {"SUB " + right_var_register->register_name_  + " # add " + var_->getVariableName() + " - " + right_var_->getVariableName()};
+    return {"SUB " + right_var_register->register_name_  + " # sub " + var_->stringify() + " - " + right_var_->stringify()};
   }
 
   int neededEmptyRegs() override {
@@ -224,7 +239,7 @@ class MultiplyExpression : public DefaultExpression {
     std::shared_ptr<Register> iterator_reg = regs.at(3);
     std::shared_ptr<Register> result_reg = regs.at(4);
     std::vector<std::string> result_code {
-      "PUT " + right_var_reg->register_name_,
+      "PUT " + right_var_reg->register_name_ + " # " + var_->stringify() + " * " + right_var_->stringify(),
       "INC " + acc_reg->register_name_,
       "SUB " + var_reg->register_name_,
       "JPOS " + std::to_string(expression_first_line_number + 10),
@@ -278,7 +293,7 @@ class MultiplyExpression : public DefaultExpression {
  * GET reg_b  # if right_var > var return 0
  * INC reg_a
  * SUB reg_c
- * JPOS end_of_division
+ * JZERO end_of_division
  * GET reg_c  # if right_var == 0 return 0
  * JZERO end_of_division
  * RST reg_f
@@ -288,6 +303,7 @@ class MultiplyExpression : public DefaultExpression {
  * SHL reg_c
  * SHL reg_f
  * JPOS last_set_bit_pos
+ * SHL reg_f
  * SHR reg_c  # main_loop
  * SHR reg_f
  * GET reg_f
@@ -322,12 +338,12 @@ class DivideExpression : public DefaultExpression {
     std::shared_ptr<Register> iterator_reg = regs.at(3);
     std::shared_ptr<Register> result_reg = regs.at(4);
     std::vector<std::string> result_code {
-      "PUT " + right_var_reg->register_name_,
+      "PUT " + right_var_reg->register_name_ + " # " + var_->stringify() + " / " + right_var_->stringify(),
       "RST " + result_reg->register_name_,
       "GET " + var_reg->register_name_,
       "INC " + acc_reg->register_name_,
       "SUB " + right_var_reg->register_name_,
-      "JPOS " + std::to_string(expression_first_line_number + 30),
+      "JZERO " + std::to_string(expression_first_line_number + 30),
       "GET " + right_var_reg->register_name_,
       "JZERO " + std::to_string(expression_first_line_number + 30),
       "RST " + iterator_reg->register_name_,
@@ -378,7 +394,7 @@ class DivideExpression : public DefaultExpression {
  * GET reg_b  # if right_var > var return var
  * INC reg_a
  * SUB reg_c
- * JPOS end_of_modulo
+ * JZERO end_of_modulo
  * GET reg_c  # if right_var == 0 return var
  * JZERO end_of_modulo
  * RST reg_f
@@ -417,12 +433,13 @@ class ModuloExpression : public DefaultExpression {
     std::shared_ptr<Register> acc_reg = regs.at(1);
     std::shared_ptr<Register> right_var_reg = regs.at(2);
     std::shared_ptr<Register> iterator_reg = regs.at(3);
+    std::cout << "firs line " << expression_first_line_number << std::endl;
     std::vector<std::string> result_code {
-      "PUT " + right_var_reg->register_name_,
+      "PUT " + right_var_reg->register_name_ + " # " + var_->stringify() + " % " + right_var_->stringify(),
       "GET " + var_reg->register_name_,
       "INC " + acc_reg->register_name_,
       "SUB " + right_var_reg->register_name_,
-      "JPOS " + std::to_string(expression_first_line_number + 26),
+      "JZERO " + std::to_string(expression_first_line_number + 26),
       "GET " + right_var_reg->register_name_,
       "JZERO " + std::to_string(expression_first_line_number + 26),
       "RST " + iterator_reg->register_name_,
@@ -580,7 +597,7 @@ class Condition {
     std::shared_ptr<Register> free_reg = registers.at(2);
     switch(type_) {
       case condition_type::EQ:
-        result_code.push_back("PUT " + free_reg->register_name_ + " # " + left_var_->getVariableName() + " == " + right_var_->getVariableName());
+        result_code.push_back("PUT " + free_reg->register_name_ + " # " + left_var_->stringify() + " == " + right_var_->stringify());
         result_code.push_back("SUB " + first->register_name_);
         result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
         result_code.push_back("GET " + first->register_name_);
@@ -588,7 +605,7 @@ class Condition {
         result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
         break;
       case condition_type::NEQ:
-        result_code.push_back("PUT " + free_reg->register_name_ + " # " + left_var_->getVariableName() + " != " + right_var_->getVariableName());
+        result_code.push_back("PUT " + free_reg->register_name_ + " # " + left_var_->stringify() + " != " + right_var_->stringify());
         result_code.push_back("SUB " + first->register_name_);
         result_code.push_back("JPOS " + std::to_string(target_block_start_line_number));
         result_code.push_back("GET " + first->register_name_);
@@ -596,12 +613,12 @@ class Condition {
         result_code.push_back("JZERO " + std::to_string(next_block_start_line_number));
         break;
       case condition_type::GT:
-        result_code.push_back("INC " + accumulator->register_name_ + " # " + left_var_->getVariableName() + " > " + right_var_->getVariableName());
+        result_code.push_back("INC " + accumulator->register_name_ + " # " + left_var_->stringify() + " > " + right_var_->stringify());
         result_code.push_back("SUB " + first->register_name_);
         result_code.push_back("JPOS " + std::to_string(next_block_start_line_number));
         break;
       case condition_type::GE:
-        result_code.push_back("INC " + accumulator->register_name_ + " # " + left_var_->getVariableName() + " >= " + right_var_->getVariableName());
+        result_code.push_back("INC " + accumulator->register_name_ + " # " + left_var_->stringify() + " >= " + right_var_->stringify());
         result_code.push_back("SUB " + first->register_name_);
         result_code.push_back("JZERO " + std::to_string(next_block_start_line_number));
         break;

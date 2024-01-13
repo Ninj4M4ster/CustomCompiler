@@ -41,6 +41,7 @@ void run_machine( vector< pair<int,int> > & program )
   io = 0;
   while( program[lr].first!=HALT )	// HALT
   {
+//    std::cout << lr << std::endl;
     switch( program[lr].first )
     {
       case READ:	cout << "? "; cin >> r[0]; io+=100; lr++; break;

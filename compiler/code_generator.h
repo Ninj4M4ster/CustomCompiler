@@ -22,6 +22,7 @@ class GraphNode {
   std::shared_ptr<GraphNode> jump_condition_target = nullptr;
   // length of code in this node
   long long int node_length_ = 0;
+  long long int node_offset_ = 0;
 
   std::string proc_name;
 
