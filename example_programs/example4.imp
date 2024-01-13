@@ -35,6 +35,8 @@ PROGRAM IS
 IN
     READ n;
     READ k;
+    w:=n/4;
+    WRITE w;
     bc(n,k,w);
     WRITE w;
 END

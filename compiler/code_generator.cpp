@@ -158,16 +158,22 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
     long long int code_length_after_generation = node->code_list_.size();
     current_start_line_ += (code_length_after_generation - code_length_before_generation);
   }
-  if(node->jump_line_target) {
-    // save registers state after condition
+  if(node->jump_line_target) {  // save registers state after condition
     saved_regs = saveRegistersState();
   }
 
   // generate left node code
   if(node->left_node != nullptr) {
     generateCodePreorder(node->left_node);
-    if(node->jump_line_target) {  // save variables from registers after ending THEN block
-
+    if(node->left_node->jump_line_target) {  // save variables from registers after ending THEN block
+      std::shared_ptr<GraphNode> tmp_node = node->left_node;
+      while(tmp_node->right_node) {
+        tmp_node = tmp_node->right_node;
+      }
+      long long int code_length_bef_saving_variables = tmp_node->code_list_.size();
+      moveAccumulatorToFreeRegister(tmp_node);
+      saveRegistersValues(tmp_node);
+      current_start_line_ += tmp_node->code_list_.size() - code_length_bef_saving_variables;
     }
   }
   if(node->cond) {
@@ -178,8 +184,15 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
   }
   if(node->right_node != nullptr) {
     generateCodePreorder(node->right_node);
-    if(node->jump_line_target) {  // save variables from registers after ending ELSE block
-
+    if(node->left_node && node->left_node->jump_line_target) {  // save variables from registers after ending ELSE block
+      std::shared_ptr<GraphNode> tmp_node = node->right_node;
+      while(tmp_node->right_node) {
+        tmp_node = tmp_node->right_node;
+      }
+      long long int code_length_bef_saving_variables = tmp_node->code_list_.size();
+      moveAccumulatorToFreeRegister(tmp_node);
+      saveRegistersValues(tmp_node);
+      current_start_line_ += tmp_node->code_list_.size() - code_length_bef_saving_variables;
     }
   }
 
@@ -313,6 +326,8 @@ void CodeGenerator::saveVariableFromRegister(std::shared_ptr<Register> reg,
  *
  * @param node
  */
+// TODO(Jakub Drzewiecki): Consider overwriting register with old variable value instead of outputting to new register
+// TODO(Jakub Drzewiecki): Don't move variable from accumulator if it is already stored in other register
 void CodeGenerator::moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> node) {
   if(accumulator_->variable_saved_) {
     accumulator_->currently_used_ = false;
@@ -507,8 +522,6 @@ std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer* var,
     }
     if(var->type == variable_type::R_VAL) {
       getValueIntoRegister(var->getValue(), target_reg, node);
-      if(target_reg->register_name_ != "a")
-        node->code_list_.push_back("PUT " + target_reg->register_name_);
     } else if(var->type == variable_type::VAR) {
       auto sym = current_symbol_table_->findSymbol(var->getVariableName());
       getValueIntoRegister(sym->mem_start, target_reg, node);
@@ -584,17 +597,6 @@ std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer* var,
     target_reg->currently_used_ = false;
     target_reg->variable_saved_ = true;
   }
-  if(target_reg->variable_saved_ && use_saved_variables && target_reg->curr_variable) {
-    target_reg->currently_used_ = true;
-    std::shared_ptr<Register> free_reg = findFreeRegister(node);
-    saveVariableFromRegister(target_reg, free_reg, node);
-    target_reg->currently_used_ = false;
-    node->code_list_.push_back("PUT " + target_reg->register_name_);
-    target_reg->curr_variable = accumulator_->curr_variable;
-    target_reg->variable_saved_ = true;
-    accumulator_->variable_saved_ = true;
-    accumulator_->curr_variable = nullptr;
-  }
   return target_reg;
 }
 
@@ -646,18 +648,26 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
   std::vector<std::shared_ptr<Register>> prepared_registers;
   bool use_saved_variables = true;
   for(int i = 0; i < needed_variables.size() - 1; i++) {
-    prepared_registers.push_back(loadVariable(needed_variables.at(i), nullptr, node, use_saved_variables));
+    std::shared_ptr<Register> reg_with_var = loadVariable(needed_variables.at(i), nullptr, node, use_saved_variables);
+    reg_with_var->currently_used_ = true;
+    prepared_registers.push_back(reg_with_var);
   }
   // store accumulator variable last in vector
+  // TODO(Jakub Drzewiecki): Consider loading variable to different register, not only accumulator
   loadVariable(needed_variables.at(needed_variables.size() - 1), accumulator_, node, use_saved_variables);
   prepared_registers.push_back(accumulator_);
   for(int i = 0; i < command->expression_->neededEmptyRegs(); i++) {
-    prepared_registers.push_back(findFreeRegister(node));
+    std::shared_ptr<Register> free_reg = findFreeRegister(node);
+    free_reg->currently_used_ = true;
+    prepared_registers.push_back(free_reg);
   }
   std::vector<std::string> generated_commands =
       command->expression_->calculateExpression(prepared_registers,
                                                current_start_line_ + node->code_list_.size());
   for(auto reg : searched_variables_in_regs) {
+    reg->currently_used_ = false;
+  }
+  for(auto reg : prepared_registers) {
     reg->currently_used_ = false;
   }
   for(auto generated_code : generated_commands) {
@@ -726,9 +736,6 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     accumulator_->variable_saved_ = false;
     accumulator_->currently_used_ = false;
   }
-  for(auto reg : prepared_registers) {
-    reg->currently_used_ = false;
-  }
 }
 
 void CodeGenerator::handleReadCommand(ReadCommand *command, std::shared_ptr<GraphNode> node) {
@@ -753,6 +760,10 @@ void CodeGenerator::handleWriteCommand(WriteCommand *command, std::shared_ptr<Gr
   node->code_list_.push_back("WRITE");
 }
 
+// TODO(Jakub Drzewiecki): For procedures with <= 3 arguments,
+//  variables can be passed in registers instead of memory addresses.
+//  Consider also passing memory addresses of arguments in registers instead of saving it,
+//  this can allow for up to 6 arguments being passed in registers.
 void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
                                                std::shared_ptr<GraphNode> node) {
   // save all currently unsaved variables
@@ -792,7 +803,6 @@ void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
   node->code_list_.push_back("JUMP " + std::to_string(proc_node_start->start_line_));
 }
 
-// TODO(Jakub Drzewiecki):
 void CodeGenerator::prepareCondition(std::shared_ptr<GraphNode> node) {
   std::vector<VariableContainer*> needed_variables = node->cond->neededVariablesInRegisters();
   // search if any of the variables are already loaded and reserve the registers

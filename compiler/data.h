@@ -171,8 +171,8 @@ class MinusExpression : public DefaultExpression {
  * x := var_ * right_var_
  *
  * multiplication requires 5 registers (including accumulator)
- * var in reg_b
- * right_var in reg_a
+ * var in reg_b  20
+ * right_var in reg_a  2
  * use reg_c to store right_var
  * use reg_d to store lower value from var and right_var, used as iterator for loop end
  * use reg_e to store result
