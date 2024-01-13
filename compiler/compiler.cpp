@@ -306,7 +306,6 @@ Condition *Compiler::createGreaterEqualCondition(VariableContainer *left_var, Va
   con->type_ = condition_type::GE;
   con->left_var_ = left_var;
   con->right_var_ = right_var;
-  std::cout << "Creating ge " << left_var->getVariableName() << " " << right_var << std::endl;
   return con;
 }
 

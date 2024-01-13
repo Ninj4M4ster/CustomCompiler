@@ -44,7 +44,6 @@ PROGRAM IS
 IN
   READ m;
   READ n;
-  WRITE m;
   de(m,n,x,y,nwd);
   WRITE m;
   WRITE x;

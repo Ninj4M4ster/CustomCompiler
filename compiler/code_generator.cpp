@@ -113,6 +113,7 @@ void CodeGenerator::process_commands(std::vector<Command *> comms,
       } else {
         // right branch is following code from currently processed code
         std::shared_ptr<GraphNode> next_code = std::make_shared<GraphNode>();
+        curr_node->right_node = next_code;
         curr_node = next_code;
       }
     } else {
@@ -159,7 +160,6 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
   }
   if(node->jump_line_target) {
     // save registers state after condition
-    // TODO(Jakub Drzewiecki): generated code size calculations missing
     saved_regs = saveRegistersState();
   }
 
@@ -205,6 +205,7 @@ void CodeGenerator::generateProcedureEnd(std::shared_ptr<GraphNode> node) {
   }
   long long int code_size_before_generation = node->code_list_.size();
   // save all procedure arguments
+  moveAccumulatorToFreeRegister(node);
   auto free_reg = findFreeRegister(node);
   for(auto reg : registers_) {
     if(reg->curr_variable &&
@@ -250,6 +251,7 @@ void CodeGenerator::saveVariableFromRegister(std::shared_ptr<Register> reg,
   if(!var) {
     reg->curr_variable = nullptr;
     reg->currently_used_ = false;
+    reg->variable_saved_ = true;
     return;
   }
   if(var->type == variable_type::R_VAL || var->type == variable_type::VARIABLE_INDEXED_ARR) {
@@ -582,7 +584,7 @@ std::shared_ptr<Register> CodeGenerator::loadVariable(VariableContainer* var,
     target_reg->currently_used_ = false;
     target_reg->variable_saved_ = true;
   }
-  if(target_reg->variable_saved_ && use_saved_variables) {
+  if(target_reg->variable_saved_ && use_saved_variables && target_reg->curr_variable) {
     target_reg->currently_used_ = true;
     std::shared_ptr<Register> free_reg = findFreeRegister(node);
     saveVariableFromRegister(target_reg, free_reg, node);
@@ -706,6 +708,7 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
           reg->curr_variable = nullptr;
           reg->variable_saved_ = true;
           reg->currently_used_ = false;
+          std::cout << command->left_var_->getVariableName() << " found in prev registers\n";
         }
       }
     }
@@ -719,6 +722,7 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
       }
     }
     accumulator_->curr_variable = command->left_var_;
+    std::cout << command->left_var_->getVariableName() << " assigned\n";
     accumulator_->variable_saved_ = false;
     accumulator_->currently_used_ = false;
   }
@@ -759,22 +763,28 @@ void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
       saveVariableFromRegister(reg, free_reg, node);
     }
   }
+//  node->code_list_.push_back("# vars saved ");
   // pass variables memory addresses to procedures memory reserved for declared arguments
   for(auto arg : command->proc_call_.args) {
     auto sym = current_symbol_table_->findSymbol(arg.name);
     auto target_sym = arg.target_variable_symbol;
     getValueIntoRegister(sym->mem_start, free_reg, node);
     node->code_list_.push_back("GET " + free_reg->register_name_);
+    if(sym->type == symbol_type::PROC_ARGUMENT || sym->type == symbol_type::PROC_ARRAY_ARGUMENT) {
+      node->code_list_.push_back("LOAD " + accumulator_->register_name_);
+    }
     getValueIntoRegister(target_sym->mem_start, free_reg, node);
     node->code_list_.push_back("STORE " + free_reg->register_name_);
   }
+
+//  node->code_list_.push_back("# addresses stored");
 
   // pass current line number in register h
   node->code_list_.push_back("STRK a");
   // add procedure call
   int i = 0;
   for(; i < procedures_names_.size(); i++) {
-    if(procedures_names_.at(i) == procedures_start_nodes_.at(i)->proc_name) {
+    if(procedures_names_.at(i) == command->proc_call_.name) {
       break;
     }
   }
