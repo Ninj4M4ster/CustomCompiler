@@ -113,11 +113,17 @@ class DefaultExpression {
   // accumulator should be the last register
   virtual std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                        long long int expression_first_line_number) {
+    std::cout << "asd\n";
     return {};
   }
 
   virtual int neededEmptyRegs() {
     return 0;
+  }
+
+  virtual void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) {
+    std::cout << "asd\n";
+    return;
   }
  private:
   expression_type type = expression_type::DEFAULT;
@@ -149,6 +155,11 @@ class PlusExpression : public DefaultExpression {
   int neededEmptyRegs() override {
     return 0;
   }
+
+  void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
+    std::cout << "asd\n";
+    return;
+  }
  private:
   expression_type type = expression_type::PLUS;
 };
@@ -177,6 +188,11 @@ class MinusExpression : public DefaultExpression {
 
   int neededEmptyRegs() override {
     return 0;
+  }
+
+  void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
+    std::cout << "asd\n";
+    return;
   }
  private:
   expression_type type = expression_type::MINUS;
@@ -274,6 +290,22 @@ class MultiplyExpression : public DefaultExpression {
 
   int neededEmptyRegs() override {
     return 3;
+  }
+
+  void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
+    std::cout << "asd\n";
+    std::shared_ptr<Register> var_reg = registers.at(0);
+    std::shared_ptr<Register> right_var_reg = registers.at(2);
+    std::shared_ptr<Register> iterator_reg = registers.at(3);
+    std::shared_ptr<Register> result_reg = registers.at(4);
+    right_var_reg->curr_variable = nullptr;
+    right_var_reg->variable_saved_ = true;
+    iterator_reg->curr_variable = nullptr;
+    iterator_reg->variable_saved_ = true;
+    var_reg->curr_variable = nullptr;
+    var_reg->variable_saved_ = true;
+    result_reg->curr_variable = nullptr;
+    result_reg->variable_saved_ = true;
   }
  private:
   expression_type type = expression_type::MULTIPLY;
@@ -376,6 +408,22 @@ class DivideExpression : public DefaultExpression {
   int neededEmptyRegs() override {
     return 3;
   }
+
+  void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
+    std::cout << "asd\n";
+    std::shared_ptr<Register> var_reg = registers.at(0);
+    std::shared_ptr<Register> right_var_reg = registers.at(2);
+    std::shared_ptr<Register> iterator_reg = registers.at(3);
+    std::shared_ptr<Register> result_reg = registers.at(4);
+    right_var_reg->curr_variable = nullptr;
+    right_var_reg->variable_saved_ = true;
+    iterator_reg->curr_variable = nullptr;
+    iterator_reg->variable_saved_ = true;
+    var_reg->curr_variable = nullptr;
+    var_reg->variable_saved_ = true;
+    result_reg->curr_variable = nullptr;
+    result_reg->variable_saved_ = true;
+  }
  private:
   expression_type type = expression_type::DIVIDE;
 };
@@ -469,6 +517,22 @@ class ModuloExpression : public DefaultExpression {
   int neededEmptyRegs() override {
     return 2;
   }
+
+  void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
+    std::cout << "1" << std::endl;
+    std::shared_ptr<Register> var_reg = registers.at(0);
+    std::cout << "2" << std::endl;
+    std::shared_ptr<Register> right_var_reg = registers.at(2);
+    std::cout << "3" << std::endl;
+    std::shared_ptr<Register> iterator_reg = registers.at(3);
+    std::cout << "4" << std::endl;
+    right_var_reg->curr_variable = nullptr;
+    right_var_reg->variable_saved_ = true;
+    iterator_reg->curr_variable = nullptr;
+    iterator_reg->variable_saved_ = true;
+    var_reg->curr_variable = nullptr;
+    var_reg->variable_saved_ = true;
+  }
  private:
   expression_type type = expression_type::MODULO;
 };
@@ -561,6 +625,7 @@ class Condition {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) {
+    std::cout << "asd\n";
     std::shared_ptr<Register> first = registers.at(0);
     std::shared_ptr<Register> accumulator = registers.at(1);
     std::shared_ptr<Register> free_reg = registers.at(2);

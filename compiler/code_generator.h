@@ -22,7 +22,6 @@ class GraphNode {
   std::shared_ptr<GraphNode> jump_condition_target = nullptr;
   // length of code in this node
   long long int node_length_ = 0;
-  long long int node_offset_ = 0;
 
   std::string proc_name;
 
@@ -57,7 +56,8 @@ class CodeGenerator {
   // registers management
   void saveVariableFromRegister(std::shared_ptr<Register> reg,
                                 std::shared_ptr<Register> other_free_reg,
-                                std::shared_ptr<GraphNode> node);
+                                std::shared_ptr<GraphNode> node,
+                                bool keep_variable);
   void moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> node);
   std::shared_ptr<Register> findFreeRegister(std::shared_ptr<GraphNode> node);
   void getValueIntoRegister(long long int value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node);

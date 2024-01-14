@@ -26,14 +26,8 @@ IN
    p:=n-k;
    s(p,b);
    s(k,c);
-   WRITE p;
-   WRITE a;
-   WRITE b;
-   WRITE c;
    m:=a/b;
-   WRITE m;
    m:=m/c;
-   WRITE m;
 END
 
 PROGRAM IS

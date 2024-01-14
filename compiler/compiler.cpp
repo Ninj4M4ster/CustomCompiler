@@ -58,6 +58,7 @@ void Compiler::declareVariable(std::string variable_name, int line_number) {
 
 void Compiler::declareVariable(std::string variable_name, long long array_size, int line_number) {
   Symbol new_symbol = createSymbol(variable_name, symbol_type::ARR);
+  std::cout << array_size << std::endl;
   setSymbolBounds(new_symbol, array_size, line_number);
   current_symbol_table_->addSymbol(new_symbol, line_number);
 }
@@ -442,7 +443,7 @@ void Compiler::setSymbolBounds(Symbol & symbol, long long mem_len, int line_numb
     + ": array size has to be a positive number.");
   }
   symbol.mem_start = curr_memory_offset_;
-  symbol.length += mem_len;
+  symbol.length = mem_len;
   if(curr_memory_offset_ + mem_len < curr_memory_offset_) {  // memory offset overflow
     throw std::runtime_error("Error at line " + std::to_string(line_number)
     + ": memory capacity reached.");

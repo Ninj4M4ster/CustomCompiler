@@ -12,7 +12,6 @@ IN
     pot:=a%c;
     WHILE wyk>0 DO
 	o:=wyk%2;
-	WRITE o;
 	IF o=1 THEN
 	    d:=d*pot;
 	    d:=d%c;
