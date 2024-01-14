@@ -1,7 +1,3 @@
-//
-// Created by drzewo on 31.12.23.
-//
-
 #ifndef CUSTOMCOMPILER_COMPILER_SYMBOL_TABLE_H_
 #define CUSTOMCOMPILER_COMPILER_SYMBOL_TABLE_H_
 

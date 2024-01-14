@@ -76,6 +76,7 @@ void CodeGenerator::process_commands(std::vector<Command *> comms,
       while(right_node->right_node != nullptr) {
         right_node = right_node->right_node;
       }
+      right_node->should_save_registers_after_code = true;
       right_node->right_node = next_code;
       curr_node = next_code;
     } else if(comm->type == command_type::WHILE) {
@@ -109,6 +110,7 @@ void CodeGenerator::process_commands(std::vector<Command *> comms,
         while(right_node->right_node != nullptr) {
           right_node = right_node->right_node;
         }
+        right_node->should_save_registers_after_code = true;
         right_node->right_node = next_code;
         curr_node = next_code;
       } else {
@@ -154,7 +156,6 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
     long long int code_length_after_saving_regs = node->code_list_.size();
     current_start_line_ += code_length_after_saving_regs - code_length_before_saving_regs;
     node->condition_start_line_ = current_start_line_;
-    std::cout << node->condition_start_line_ << std::endl;
     prepareCondition(node);
     long long int code_length_after_condition_preparation = node->code_list_.size();
     current_start_line_ += node->cond->getConditionCodeSize() +
@@ -167,17 +168,14 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
   // generate left node code
   if(node->left_node != nullptr) {
     generateCodePreorder(node->left_node);
-    if(node->left_node->jump_line_target || node->left_node->jump_condition_target) {  // save variables from registers after ending THEN block
-      std::cout << "This is if\n";
-      std::shared_ptr<GraphNode> tmp_node = node->left_node;
-      while(tmp_node->right_node) {
-        tmp_node = tmp_node->right_node;
-      }
-      long long int code_length_bef_saving_variables = tmp_node->code_list_.size();
-      moveAccumulatorToFreeRegister(tmp_node);
-      saveRegistersValues(tmp_node);
-      current_start_line_ += tmp_node->code_list_.size() - code_length_bef_saving_variables;
+    // save variables from registers from block
+    std::shared_ptr<GraphNode> tmp_node = node->left_node;
+    while(tmp_node->right_node) {
+      tmp_node = tmp_node->right_node;
     }
+    long long int code_length_bef_saving_variables = tmp_node->code_list_.size();
+    saveRegistersValues(tmp_node);
+    current_start_line_ += tmp_node->code_list_.size() - code_length_bef_saving_variables;
   }
   if(node->cond) {
     generateCondition(node);
@@ -185,18 +183,22 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
   if(node->jump_line_target) {
     loadRegistersState(saved_regs);
   }
+  if(node->should_save_registers_after_code) {
+    std::shared_ptr<GraphNode> tmp_node;
+    if(node->right_node) {
+      tmp_node = node->right_node;
+      long long int code_length_before_save = tmp_node->code_list_.size();
+      saveRegistersValues(tmp_node);
+      current_start_line_ += tmp_node->code_list_.size() - code_length_before_save;
+      tmp_node->start_line_ = current_start_line_;
+    } else {
+      long long int code_length_before_save = node->code_list_.size();
+      saveRegistersValues(node);
+      current_start_line_ += node->code_list_.size() - code_length_before_save;
+    }
+  }
   if(node->right_node != nullptr) {
     generateCodePreorder(node->right_node);
-    if(node->left_node && node->left_node->jump_line_target) {  // save variables from registers after ending ELSE block
-      std::shared_ptr<GraphNode> tmp_node = node->right_node;
-      while(tmp_node->right_node) {
-        tmp_node = tmp_node->right_node;
-      }
-      long long int code_length_bef_saving_variables = tmp_node->code_list_.size();
-      moveAccumulatorToFreeRegister(tmp_node);
-      saveRegistersValues(tmp_node);
-      current_start_line_ += tmp_node->code_list_.size() - code_length_bef_saving_variables;
-    }
   }
 
   if(node->jump_line_target || node->jump_condition_target) {
@@ -322,6 +324,17 @@ void CodeGenerator::saveVariableFromRegister(std::shared_ptr<Register> reg,
   if(keep_variable) {
     node->code_list_.push_back("PUT " + reg->register_name_);
     accumulator_->curr_variable = nullptr;
+    for(auto other_reg : registers_) {
+      if(other_reg->curr_variable && other_reg->register_name_ != reg->register_name_ &&
+          other_reg->register_name_ != reg->register_name_ && reg->curr_variable &&
+          other_reg->curr_variable->type == reg->curr_variable->type &&
+          other_reg->curr_variable->getVariableName() == reg->curr_variable->getVariableName() &&
+          other_reg->curr_variable->getValue() == reg->curr_variable->getValue() &&
+          other_reg->curr_variable->getIndexVariableName() == reg->curr_variable->getIndexVariableName()) {
+        other_reg->variable_saved_ = true;
+        other_reg->curr_variable = nullptr;
+      }
+    }
   }
   else {
     reg->curr_variable = nullptr;
@@ -335,6 +348,7 @@ void CodeGenerator::saveVariableFromRegister(std::shared_ptr<Register> reg,
     other_reg->curr_variable->getValue() == reg->curr_variable->getValue() &&
     other_reg->curr_variable->getIndexVariableName() == reg->curr_variable->getIndexVariableName()) {
       other_reg->variable_saved_ = true;
+      other_reg->curr_variable = nullptr;
     }
   }
 }
@@ -724,8 +738,6 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
   }
   // save variable indexed arrays since such value cannot be kept in registers, no chance of saving them later
   if(command->left_var_->type == variable_type::VARIABLE_INDEXED_ARR) {
-    std::cout << "Saving " << command->left_var_->stringify() << "\n";
-    // TODO(Jakub Drzewiecki): New flag not to delete value that is currently in saving process
     std::shared_ptr<Register> acc_hold_reg = findFreeRegister(node);
     acc_hold_reg->currently_used_ = true;
     acc_hold_reg->variable_saved_ = false;
@@ -743,9 +755,7 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     if(arr_sym->type == symbol_type::PROC_ARRAY_ARGUMENT) {
       node->code_list_.push_back("LOAD " + accumulator_->register_name_);
     }
-    std::cout << "Saving " << command->left_var_->stringify() << "\n";
     node->code_list_.push_back("ADD " + ind_reg->register_name_);
-    std::cout << "Saving " << command->left_var_->stringify() << "\n";
     node->code_list_.push_back("PUT " + ind_reg->register_name_);
     node->code_list_.push_back("GET " + acc_hold_reg->register_name_);
     node->code_list_.push_back("STORE " + ind_reg->register_name_);
@@ -757,7 +767,6 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     accumulator_->curr_variable = command->left_var_;
     accumulator_->currently_used_ = false;
     accumulator_->variable_saved_ = true;
-    std::cout << "sainvedn\n";
   } else {
     if(command->left_var_->type != variable_type::R_VAL) {
       for(auto reg : registers_) {
@@ -784,7 +793,6 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     accumulator_->variable_saved_ = false;
     accumulator_->currently_used_ = false;
   }
-  std::cout << "tus\n";
 }
 
 void CodeGenerator::handleReadCommand(ReadCommand *command, std::shared_ptr<GraphNode> node) {
@@ -818,9 +826,6 @@ void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
                                                std::shared_ptr<GraphNode> node) {
   // save all currently unsaved variables
   moveAccumulatorToFreeRegister(node);
-  if(accumulator_->curr_variable) {
-    std::cout << accumulator_->curr_variable->stringify() << std::endl;
-  }
   std::shared_ptr<Register> free_reg = findFreeRegister(node);
   for(auto reg : registers_) {
     if(reg->register_name_ != free_reg->register_name_) {
@@ -854,14 +859,6 @@ void CodeGenerator::handleProcedureCallCommand(ProcedureCallCommand *command,
   }
   auto proc_node_start = procedures_start_nodes_.at(i);
   node->code_list_.push_back("JUMP " + std::to_string(proc_node_start->start_line_));
-  for(auto reg : registers_) {
-    if(reg->curr_variable) {
-      std::cout << reg->curr_variable->stringify() << std::endl;
-    }
-  }
-  if(accumulator_->curr_variable) {
-    std::cout << accumulator_->curr_variable->stringify() << std::endl;
-  }
 }
 
 void CodeGenerator::prepareCondition(std::shared_ptr<GraphNode> node) {
@@ -874,7 +871,6 @@ void CodeGenerator::prepareCondition(std::shared_ptr<GraphNode> node) {
     if(searched_reg_var) {
       searched_reg_var->currently_used_ = true;
       searched_variables_in_regs.push_back(searched_reg_var);
-      std::cout << "Var found " << searched_reg_var->curr_variable->stringify() << " in reg " << searched_reg_var->register_name_ << std::endl;
     }
   }
   moveAccumulatorToFreeRegister(node);

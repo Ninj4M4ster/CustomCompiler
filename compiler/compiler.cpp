@@ -58,7 +58,6 @@ void Compiler::declareVariable(std::string variable_name, int line_number) {
 
 void Compiler::declareVariable(std::string variable_name, long long array_size, int line_number) {
   Symbol new_symbol = createSymbol(variable_name, symbol_type::ARR);
-  std::cout << array_size << std::endl;
   setSymbolBounds(new_symbol, array_size, line_number);
   current_symbol_table_->addSymbol(new_symbol, line_number);
 }

@@ -11,6 +11,7 @@ class GraphNode {
   std::shared_ptr<GraphNode> right_node = nullptr;
 
   std::vector<std::string> code_list_;
+  std::vector<std::string> registers_saving_code_list_;
 
   // start line of current node
   long long int start_line_ = -1;
@@ -24,6 +25,7 @@ class GraphNode {
   long long int node_length_ = 0;
 
   std::string proc_name;
+  bool should_save_registers_after_code = false;
 
   std::vector<std::shared_ptr<Register>> regs_prepared_for_condition;
 };

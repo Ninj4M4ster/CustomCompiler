@@ -113,7 +113,6 @@ class DefaultExpression {
   // accumulator should be the last register
   virtual std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                        long long int expression_first_line_number) {
-    std::cout << "asd\n";
     return {};
   }
 
@@ -122,7 +121,6 @@ class DefaultExpression {
   }
 
   virtual void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) {
-    std::cout << "asd\n";
     return;
   }
  private:
@@ -157,7 +155,6 @@ class PlusExpression : public DefaultExpression {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
-    std::cout << "asd\n";
     return;
   }
  private:
@@ -191,7 +188,6 @@ class MinusExpression : public DefaultExpression {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
-    std::cout << "asd\n";
     return;
   }
  private:
@@ -293,7 +289,6 @@ class MultiplyExpression : public DefaultExpression {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
-    std::cout << "asd\n";
     std::shared_ptr<Register> var_reg = registers.at(0);
     std::shared_ptr<Register> right_var_reg = registers.at(2);
     std::shared_ptr<Register> iterator_reg = registers.at(3);
@@ -410,7 +405,6 @@ class DivideExpression : public DefaultExpression {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
-    std::cout << "asd\n";
     std::shared_ptr<Register> var_reg = registers.at(0);
     std::shared_ptr<Register> right_var_reg = registers.at(2);
     std::shared_ptr<Register> iterator_reg = registers.at(3);
@@ -481,7 +475,6 @@ class ModuloExpression : public DefaultExpression {
     std::shared_ptr<Register> acc_reg = regs.at(1);
     std::shared_ptr<Register> right_var_reg = regs.at(2);
     std::shared_ptr<Register> iterator_reg = regs.at(3);
-    std::cout << "firs line " << expression_first_line_number << std::endl;
     std::vector<std::string> result_code {
       "PUT " + right_var_reg->register_name_ + " # " + var_->stringify() + " % " + right_var_->stringify(),
       "GET " + var_reg->register_name_,
@@ -519,13 +512,9 @@ class ModuloExpression : public DefaultExpression {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
-    std::cout << "1" << std::endl;
     std::shared_ptr<Register> var_reg = registers.at(0);
-    std::cout << "2" << std::endl;
     std::shared_ptr<Register> right_var_reg = registers.at(2);
-    std::cout << "3" << std::endl;
     std::shared_ptr<Register> iterator_reg = registers.at(3);
-    std::cout << "4" << std::endl;
     right_var_reg->curr_variable = nullptr;
     right_var_reg->variable_saved_ = true;
     iterator_reg->curr_variable = nullptr;
@@ -625,7 +614,6 @@ class Condition {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) {
-    std::cout << "asd\n";
     std::shared_ptr<Register> first = registers.at(0);
     std::shared_ptr<Register> accumulator = registers.at(1);
     std::shared_ptr<Register> free_reg = registers.at(2);
