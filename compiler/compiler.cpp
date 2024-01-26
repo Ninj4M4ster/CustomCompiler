@@ -56,7 +56,7 @@ void Compiler::declareVariable(std::string variable_name, int line_number) {
   current_symbol_table_->addSymbol(new_symbol, line_number);
 }
 
-void Compiler::declareVariable(std::string variable_name, long long array_size, int line_number) {
+void Compiler::declareVariable(std::string variable_name, size_t array_size, int line_number) {
   Symbol new_symbol = createSymbol(variable_name, symbol_type::ARR);
   setSymbolBounds(new_symbol, array_size, line_number);
   current_symbol_table_->addSymbol(new_symbol, line_number);
@@ -309,7 +309,7 @@ Condition *Compiler::createGreaterEqualCondition(VariableContainer *left_var, Va
   return con;
 }
 
-VariableContainer* Compiler::getVariable(long long value, int line_number) {
+VariableContainer* Compiler::getVariable(size_t value, int line_number) {
   RValue *r_value_var = new RValue;
   r_value_var->type = variable_type::R_VAL;
   r_value_var->value = value;
@@ -332,7 +332,7 @@ VariableContainer *Compiler::getVariable(std::string variable_name, int line_num
   return var;
 }
 
-VariableContainer *Compiler::getVariable(std::string variable_name, long long index, int line_number) {
+VariableContainer *Compiler::getVariable(std::string variable_name, size_t index, int line_number) {
   std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(variable_name);
   if(sym == nullptr) {  // no variable with given name found
     throw std::runtime_error("Error at line " + std::to_string(line_number) + ": unknown variable name.");
@@ -391,8 +391,8 @@ VariableContainer *Compiler::checkVariableInitialization(VariableContainer *var,
   }
   std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(var->getVariableName());
   if(sym->type == symbol_type::VAR && !sym->initialized) {
-    throw std::runtime_error("Error at line " + std::to_string(line_number) + ": variable "
-                                 + var->getVariableName() + " is uninitialized");
+    std::cout << "Warning at line " << std::to_string(line_number) << ": variable "
+                                 << var->getVariableName() << " is uninitialized\n";
   } else if(sym->type == symbol_type::PROC_ARGUMENT) {
     markProcedureArgumentNeedsInitialization(var->getVariableName());
   }
@@ -436,7 +436,7 @@ Symbol Compiler::createSymbol(std::string symbol_name, enum symbol_type type) {
 }
 
 // TODO(Jakub Drzewiecki): Set symbols start indexes at next powers of 2 (if there are less than 64)
-void Compiler::setSymbolBounds(Symbol & symbol, long long mem_len, int line_number) {
+void Compiler::setSymbolBounds(Symbol & symbol, size_t mem_len, int line_number) {
   if(mem_len <= 0) {  // illegal array size
     throw std::runtime_error("Error at line " + std::to_string(line_number)
     + ": array size has to be a positive number.");

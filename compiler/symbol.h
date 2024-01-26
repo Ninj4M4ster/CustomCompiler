@@ -15,8 +15,8 @@ typedef struct symbol {
   std::string symbol_name;
   enum symbol_type type;
   bool initialized;
-  long long int mem_start;
-  unsigned long long int length;
+  size_t mem_start;
+  size_t length;
   bool proc_jump_back_mem = false;
 } Symbol;
 

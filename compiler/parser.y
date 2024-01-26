@@ -20,7 +20,7 @@ std::shared_ptr<Compiler> compiler;
 
 %union {
     std::string *pidentifier;
-    long long int num;
+    size_t num;
     struct variable_container* var_container;
     class DefaultExpression* expr;
     class Condition* cond;

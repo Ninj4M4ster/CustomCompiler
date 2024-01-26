@@ -451,11 +451,11 @@ std::shared_ptr<Register> CodeGenerator::findFreeRegister(std::shared_ptr<GraphN
   return chosen_reg;
 }
 
-void CodeGenerator::getValueIntoRegister(long long value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node) {
+void CodeGenerator::getValueIntoRegister(size_t value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node) {
   node->code_list_.push_back("RST " + reg->register_name_);
   if(value == 0)
     return;
-  unsigned long long int bit = (1LU << 63);
+  size_t bit = (1LU << 63);
   while(!(value & bit)) {
     bit >>= 1;
   }
@@ -689,6 +689,7 @@ void CodeGenerator::saveRegistersValues(std::shared_ptr<GraphNode> node) {
   free_reg->currently_used_ = false;
 }
 
+// TODO(Jakub Drzewiecki): Save all procedure arguments instantly.
 void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::shared_ptr<GraphNode> node) {
   long long int code_length_before_preparation = node->code_list_.size();
   std::vector<VariableContainer*> needed_variables = command->expression_->neededVariablesInRegisters();

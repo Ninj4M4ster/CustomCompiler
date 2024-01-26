@@ -62,7 +62,7 @@ class CodeGenerator {
                                 bool keep_variable);
   void moveAccumulatorToFreeRegister(std::shared_ptr<GraphNode> node);
   std::shared_ptr<Register> findFreeRegister(std::shared_ptr<GraphNode> node);
-  void getValueIntoRegister(long long int value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node);
+  void getValueIntoRegister(size_t value, std::shared_ptr<Register> reg, std::shared_ptr<GraphNode> node);
   std::shared_ptr<Register> checkVariableAlreadyLoaded(VariableContainer* var);
   std::shared_ptr<Register> loadVariable(VariableContainer* var,
                                          std::shared_ptr<Register> target_reg,

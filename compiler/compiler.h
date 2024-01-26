@@ -19,7 +19,7 @@ class Compiler {
 
   // variables declarations
   void declareVariable(std::string variable_name, int line_number);
-  void declareVariable(std::string variable_name, long long int array_size, int line_number);
+  void declareVariable(std::string variable_name, size_t array_size, int line_number);
 
   // procedures arguments declarations
   void declareProcedureArgument(std::string variable_name, int line_number);
@@ -59,9 +59,9 @@ class Compiler {
   Condition* createGreaterEqualCondition(VariableContainer* left_var, VariableContainer* right_var, int line_number);
 
   // variables obtaining
-  VariableContainer* getVariable(long long int value, int line_number);
+  VariableContainer* getVariable(size_t value, int line_number);
   VariableContainer* getVariable(std::string variable_name, int line_number);
-  VariableContainer* getVariable(std::string variable_name, long long int index, int line_number);
+  VariableContainer* getVariable(std::string variable_name, size_t index, int line_number);
   VariableContainer* getVariable(std::string variable_name, std::string index_variable_name, int line_number);
   VariableContainer* checkVariableInitialization(VariableContainer* var, int line_number);
 
@@ -75,7 +75,7 @@ class Compiler {
   size_t curr_memory_offset_ = 0;
   static constexpr size_t k_max_mem_offset = 0x4000000000000000U;
   Symbol createSymbol(std::string symbol_name, enum symbol_type type);
-  void setSymbolBounds(Symbol & symbol, long long int mem_len, int line_number);
+  void setSymbolBounds(Symbol & symbol, size_t mem_len, int line_number);
 
   // temporary data used in procedures/main function declaration
   std::vector<ProcedureArgument> current_procedure_arguments_;
