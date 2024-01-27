@@ -58,27 +58,29 @@ void CodeGenerator::process_commands(std::vector<Command *> comms,
                                  std::shared_ptr<GraphNode> curr_node) {
   for(auto comm : comms) {
     if(comm->type == command_type::REPEAT) {
-      // TODO(Jakub Drzewiecki): Consider negating condition and simplifying nodes creation
       RepeatUntilCommand * new_comm = static_cast<RepeatUntilCommand*>(comm);
-      curr_node->cond = std::make_shared<Condition>(new_comm->cond_);
-      // create left branch - empty branch with jump command
+      auto negated_cond = std::make_shared<Condition>(new_comm->cond_);
+      if(new_comm->cond_.type_ == condition_type::EQ) {
+        negated_cond->type_ = condition_type::NEQ;
+      } else if(new_comm->cond_.type_ == condition_type::NEQ) {
+        negated_cond->type_ = condition_type::EQ;
+      } else if(new_comm->cond_.type_ == condition_type::GE) {
+        negated_cond->type_ = condition_type::GT;
+        std::swap(negated_cond->left_var_, negated_cond->right_var_);
+      } else {
+        negated_cond->type_ = condition_type::GE;
+        std::swap(negated_cond->left_var_, negated_cond->right_var_);
+      }
+      curr_node->cond = negated_cond;
+      // create left branch
       std::shared_ptr<GraphNode> left_node = std::make_shared<GraphNode>();
       curr_node->left_node = left_node;
-      // create right branch
+      process_commands(new_comm->commands_, left_node);
+      left_node->jump_condition_target = curr_node;
+      // create next code branch
       std::shared_ptr<GraphNode> right_node = std::make_shared<GraphNode>();
       curr_node->right_node = right_node;
-      process_commands(new_comm->commands_, right_node);
-      right_node->jump_condition_target = curr_node;
-      // add next block and update left branch target
-      std::shared_ptr<GraphNode> next_code = std::make_shared<GraphNode>();
-      curr_node->left_node->jump_line_target = next_code;
-      // pass next code branch to furthermost right branch
-      while(right_node->right_node != nullptr) {
-        right_node = right_node->right_node;
-      }
-      right_node->should_save_registers_after_code = true;
-      right_node->right_node = next_code;
-      curr_node = next_code;
+      curr_node = right_node;
     } else if(comm->type == command_type::WHILE) {
       WhileCommand * new_comm = static_cast<WhileCommand*>(comm);
       curr_node->cond = std::make_shared<Condition>(new_comm->cond_);

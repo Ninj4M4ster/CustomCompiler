@@ -663,7 +663,7 @@ class ModuloExpression : public DefaultExpression {
         return {
           "PUT " + free_reg->register_name_,
           "SHR " + free_reg->register_name_,
-          "SHL" + free_reg->register_name_,
+          "SHL " + free_reg->register_name_,
           "SUB " + free_reg->register_name_
         };
       }
