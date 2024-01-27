@@ -716,8 +716,10 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
   }
   // store accumulator variable last in vector
   // TODO(Jakub Drzewiecki): Consider loading variable to different register, not only accumulator
-  loadVariable(needed_variables.at(needed_variables.size() - 1), accumulator_, node, use_saved_variables);
-  prepared_registers.push_back(accumulator_);
+  if(!needed_variables.empty()) {
+    loadVariable(needed_variables.at(needed_variables.size() - 1), accumulator_, node, use_saved_variables);
+    prepared_registers.push_back(accumulator_);
+  }
   for(int i = 0; i < command->expression_->neededEmptyRegs(); i++) {
     std::shared_ptr<Register> free_reg = findFreeRegister(node);
     free_reg->currently_used_ = true;

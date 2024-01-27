@@ -166,32 +166,39 @@ class DefaultExpression {
  * ADD b
  *
  * x is in reg a
- * @TODO(Jakub Drzewiecki): Consider optimizations for expressions with const variable on the left.
- * @TODO(Jakub Drzewiecki): Change needed variables in registers acording to optimalizations
  */
 class PlusExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
   std::vector<VariableContainer*> neededVariablesInRegisters() override {
-    if(right_var_->type == variable_type::R_VAL) {
-      if(numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
-        return {var_};
-      }
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL &&
+    numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
+      return {var_};
+    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
+    numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
+      return {right_var_};
     }
     return {var_, right_var_};
   }
 
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long int expression_first_line_number) override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL &&
+    numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
       std::shared_ptr<Register> acc = regs.at(0);
-      if(numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
-        std::vector<std::string> commands;
-        for(int i = 0; i < right_var_->getValue(); i++) {
-          commands.push_back("INC " + acc->register_name_);
-        }
-        return commands;
+      std::vector<std::string> commands;
+      for(int i = 0; i < right_var_->getValue(); i++) {
+        commands.push_back("INC " + acc->register_name_);
       }
+      return commands;
+    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
+    numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
+      std::shared_ptr<Register> acc = regs.at(0);
+      std::vector<std::string> commands;
+      for(int i = 0; i < var_->getValue(); i++) {
+        commands.push_back("INC " + acc->register_name_);
+      }
+      return commands;
     }
     std::shared_ptr<Register> var_register = regs.at(0);
     return {"ADD " + var_register->register_name_ + " # add " + var_->stringify() + " + " + right_var_->stringify()};
@@ -221,25 +228,34 @@ class MinusExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
   std::vector<VariableContainer*> neededVariablesInRegisters() override {
-    if(right_var_->type == variable_type::R_VAL) {
-      if(numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
-        return {var_};
-      }
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL &&
+    numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
+      return {var_};
+    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
+    numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
+      return {right_var_};
     }
     return {right_var_, var_};
   }
 
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long int expression_first_line_number) override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL &&
+        numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
       std::shared_ptr<Register> acc = regs.at(0);
-      if(numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
-        std::vector<std::string> commands;
-        for(int i = 0; i < right_var_->getValue(); i++) {
-          commands.push_back("DEC " + acc->register_name_);
-        }
-        return commands;
+      std::vector<std::string> commands;
+      for(int i = 0; i < right_var_->getValue(); i++) {
+        commands.push_back("DEC " + acc->register_name_);
       }
+      return commands;
+    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
+        numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
+      std::shared_ptr<Register> acc = regs.at(0);
+      std::vector<std::string> commands;
+      for(int i = 0; i < var_->getValue(); i++) {
+        commands.push_back("DEC " + acc->register_name_);
+      }
+      return commands;
     }
     std::shared_ptr<Register> right_var_register = regs.at(0);
     return {"SUB " + right_var_register->register_name_  + " # sub " + var_->stringify() + " - " + right_var_->stringify()};
@@ -303,23 +319,41 @@ class MultiplyExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
   std::vector<VariableContainer*> neededVariablesInRegisters() override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
       if(right_var_->getValue() == 0) {
         return {};
       } else if(isPowerOfTwo(right_var_->getValue())) {
         return {var_};
+      }
+    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL) {
+      if(var_->getValue() == 0) {
+        return {};
+      } else if(isPowerOfTwo(var_->getValue())) {
+        return {right_var_};
       }
     }
     return {var_, right_var_};
   }
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long int expression_first_line_number) override {
-    if(right_var_->type == variable_type::R_VAL) {
-      std::shared_ptr<Register> acc = regs.at(0);
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
       if(right_var_->getValue() == 0) {
-        return {"RST " + acc->register_name_};
+        return {"RST a"};
       } else if(isPowerOfTwo(right_var_->getValue())) {
+        std::shared_ptr<Register> acc = regs.at(0);
         int msb_index = msbIndex(right_var_->getValue());
+        std::vector<std::string> commands;
+        for(int i = 0; i < msb_index - 1; i++) {
+          commands.push_back("SHL " + acc->register_name_);
+        }
+        return commands;
+      }
+    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL) {
+      if(var_->getValue() == 0) {
+        return {"RST a"};
+      } else if(isPowerOfTwo(var_->getValue())) {
+        std::shared_ptr<Register> acc = regs.at(0);
+        int msb_index = msbIndex(var_->getValue());
         std::vector<std::string> commands;
         for(int i = 0; i < msb_index - 1; i++) {
           commands.push_back("SHL " + acc->register_name_);
@@ -367,10 +401,16 @@ class MultiplyExpression : public DefaultExpression {
   }
 
   int neededEmptyRegs() override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
       if(right_var_->getValue() == 0) {
         return 0;
       } else if(isPowerOfTwo(right_var_->getValue())) {
+        return 0;
+      }
+    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL) {
+      if(var_->getValue() == 0) {
+        return 0;
+      } else if(isPowerOfTwo(var_->getValue())) {
         return 0;
       }
     }
@@ -378,6 +418,19 @@ class MultiplyExpression : public DefaultExpression {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
+      if(right_var_->getValue() == 0) {
+        return;
+      } else if(isPowerOfTwo(right_var_->getValue())) {
+        return;
+      }
+    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL) {
+      if(var_->getValue() == 0) {
+        return;
+      } else if(isPowerOfTwo(var_->getValue())) {
+        return;
+      }
+    }
     std::shared_ptr<Register> var_reg = registers.at(0);
     std::shared_ptr<Register> right_var_reg = registers.at(2);
     std::shared_ptr<Register> iterator_reg = registers.at(3);
@@ -443,7 +496,7 @@ class DivideExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
   std::vector<VariableContainer*> neededVariablesInRegisters() override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
       if(right_var_->getValue() == 0) {
         return {var_};
       } else if(isPowerOfTwo(right_var_->getValue())) {
@@ -455,7 +508,7 @@ class DivideExpression : public DefaultExpression {
 
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long expression_first_line_number) override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
       std::shared_ptr<Register> acc = regs.at(0);
       if(right_var_->getValue() == 0) {  // TODO(Jakub Drzewiecki): Division by 0 should not be possible.
         return {"RST " + acc->register_name_};
@@ -510,7 +563,7 @@ class DivideExpression : public DefaultExpression {
   }
 
   int neededEmptyRegs() override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
       if(right_var_->getValue() == 0) {
         return 0;
       } else if(isPowerOfTwo(right_var_->getValue())) {
@@ -521,6 +574,13 @@ class DivideExpression : public DefaultExpression {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
+      if(right_var_->getValue() == 0) {
+        return;
+      } else if(isPowerOfTwo(right_var_->getValue())) {
+        return;
+      }
+    }
     std::shared_ptr<Register> var_reg = registers.at(0);
     std::shared_ptr<Register> right_var_reg = registers.at(2);
     std::shared_ptr<Register> iterator_reg = registers.at(3);
@@ -582,9 +642,9 @@ class ModuloExpression : public DefaultExpression {
  public:
   VariableContainer* right_var_;
   std::vector<VariableContainer*> neededVariablesInRegisters() override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
       if(right_var_->getValue() == 1) {
-        return {var_};
+        return {};
       } else if(right_var_->getValue() == 2) {
         return {var_};
       }
@@ -594,9 +654,9 @@ class ModuloExpression : public DefaultExpression {
 
   std::vector<std::string> calculateExpression(std::vector<std::shared_ptr<Register>> regs,
                                                long long expression_first_line_number) override {
-    if(right_var_->type == variable_type::R_VAL) {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
       if(right_var_->getValue() == 1) {
-        return {};
+        return {"RST a"};
       } else if(right_var_->getValue() == 2) {
         auto acc = regs.at(0);  // var in acc
         auto free_reg = regs.at(1); // reg for holding var
@@ -656,6 +716,16 @@ class ModuloExpression : public DefaultExpression {
   }
 
   void updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
+    if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL) {
+      if(right_var_->getValue() == 1) {
+        return;
+      } else if(right_var_->getValue() == 2) {
+        auto free_reg = registers.at(1); // reg for holding var
+        free_reg->curr_variable = nullptr;
+        free_reg->variable_saved_ = true;
+        return;
+      }
+    }
     std::shared_ptr<Register> var_reg = registers.at(0);
     std::shared_ptr<Register> right_var_reg = registers.at(2);
     std::shared_ptr<Register> iterator_reg = registers.at(3);
