@@ -83,6 +83,8 @@ class CodeGenerator {
   // conditions handling
   void prepareCondition(std::shared_ptr<GraphNode> node);
   void generateCondition(std::shared_ptr<GraphNode> node);
+
+  void saveAccumulatorAfterAssignmentIfNeeded(AssignmentCommand *command, std::shared_ptr<GraphNode> node);
 };
 
 #endif //CUSTOMCOMPILER_COMPILER_CODE_GENERATOR_H_

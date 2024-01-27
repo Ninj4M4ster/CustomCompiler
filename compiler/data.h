@@ -101,6 +101,7 @@ enum class expression_type {
  * get var_ into reg_?
  *
  * x is in reg_?
+ * TODO(Jakub Drzewiecki): Create function "variable needed in accumulator"
  */
 class DefaultExpression {
  public:
