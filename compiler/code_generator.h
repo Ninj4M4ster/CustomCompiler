@@ -87,6 +87,8 @@ class CodeGenerator {
   void saveRegisterAfterAssignmentIfNeeded(AssignmentCommand *command,
                                            std::shared_ptr<Register> reg_with_result,
                                            std::shared_ptr<GraphNode> node);
+
+  std::string stringifyRegistersState();
 };
 
 #endif //CUSTOMCOMPILER_COMPILER_CODE_GENERATOR_H_

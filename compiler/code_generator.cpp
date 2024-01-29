@@ -1,4 +1,5 @@
 #include <math.h>
+#include <sstream>
 #include "code_generator.h"
 
 CodeGenerator::CodeGenerator() {
@@ -148,21 +149,7 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
       handleProcedureCallCommand(procedure_call_command, node);
     }
     current_start_line_ += node->code_list_.size() - code_length_before_command;
-    std::cout << accumulator_->register_name_ << " ";
-    if(accumulator_->curr_variable) {
-      std::cout << accumulator_->curr_variable->stringify() << " ; ";
-    } else {
-      std::cout << "; ";
-    }
-    for(auto reg : registers_) {
-      std::cout << reg->register_name_ << " ";
-      if(reg->curr_variable) {
-        std::cout << reg->curr_variable->stringify() << " ; ";
-      } else {
-        std::cout << "; ";
-      }
-    }
-    std::cout << std::endl;
+//    std::cout << stringifyRegistersState();
   }
   std::vector<std::shared_ptr<Register>> saved_regs;
   if(node->cond) {
@@ -789,12 +776,9 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
                                                current_start_line_ +
                                                (code_length_after_preparation - code_length_before_preparation));
   auto reg_with_result = command->expression_->updateRegistersState(prepared_registers);
-//  std::cout << "bef " << reg_with_result->curr_variable->stringify() << std::endl;
   if(!reg_with_result)
     reg_with_result = accumulator_;
-//  std::cout << "af " << reg_with_result->curr_variable->stringify() << " " << command->left_var_->stringify() << std::endl;
   reg_with_result->curr_variable = command->left_var_;
-//  std::cout << "fin " << reg_with_result->curr_variable->stringify() << " " << command->left_var_->stringify() << std::endl;
   reg_with_result->variable_saved_ = false;
   for(auto reg : registers_) {
     reg->currently_used_ = false;
@@ -803,7 +787,6 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     node->code_list_.push_back(generated_code);
   }
   reg_with_result->currently_used_ = true;
-//  std::cout << "bef save " << reg_with_result->curr_variable->stringify() << " " << command->left_var_->stringify() << std::endl;
   // save variable from accumulator if needed
   saveRegisterAfterAssignmentIfNeeded(command, reg_with_result, node);
   // update variables in rest of registers
@@ -970,7 +953,6 @@ void CodeGenerator::saveRegisterAfterAssignmentIfNeeded(AssignmentCommand *comma
   if(reg_with_result->register_name_ != "a") {
     moveAccumulatorToFreeRegister(node);
   }
-//  std::cout << "while sav " << reg_with_result->curr_variable->stringify() << " " << command->left_var_->stringify() << std::endl;
   if(command->left_var_->type == variable_type::VARIABLE_INDEXED_ARR) {
     std::shared_ptr<Register> acc_hold_reg;
     if(reg_with_result->register_name_ == "a") {
@@ -985,11 +967,9 @@ void CodeGenerator::saveRegisterAfterAssignmentIfNeeded(AssignmentCommand *comma
     ind_var->type = variable_type::VAR;
     ind_var->var_name = command->left_var_->getIndexVariableName();
     std::shared_ptr<Register> ind_reg = checkVariableAlreadyLoaded(ind_var);
-//    std::cout << "bef load " << reg_with_result->curr_variable->stringify() << std::endl;
     if(!ind_reg) {
       ind_reg = loadVariable(ind_var, ind_reg, node, true);
     }
-//    std::cout << "af load " << reg_with_result->curr_variable->stringify() << std::endl;
     getValueIntoRegister(arr_sym->mem_start, accumulator_, node);
     if(arr_sym->type == symbol_type::PROC_ARRAY_ARGUMENT) {
       node->code_list_.push_back("LOAD " + accumulator_->register_name_);
@@ -1005,7 +985,6 @@ void CodeGenerator::saveRegisterAfterAssignmentIfNeeded(AssignmentCommand *comma
     ind_reg->curr_variable = nullptr;
     ind_reg->currently_used_ = false;
     ind_reg->variable_saved_ = true;
-//    std::cout << reg_with_result->curr_variable->stringify() << std::endl;
     if(reg_with_result->register_name_ == "a") { // rework registers state
       accumulator_->curr_variable = command->left_var_;
       acc_hold_reg->currently_used_ = false;
@@ -1061,4 +1040,24 @@ void CodeGenerator::saveRegisterAfterAssignmentIfNeeded(AssignmentCommand *comma
       free_reg->currently_used_ = false;
     }
   }
+}
+
+std::string CodeGenerator::stringifyRegistersState() {
+  std::stringstream result;
+  result << accumulator_->register_name_ << " ";
+  if(accumulator_->curr_variable) {
+    result << accumulator_->curr_variable->stringify() << " ; ";
+  } else {
+    result << "; ";
+  }
+  for(auto reg : registers_) {
+    result << reg->register_name_ << " ";
+    if(reg->curr_variable) {
+      result << reg->curr_variable->stringify() << " ; ";
+    } else {
+      result << "; ";
+    }
+  }
+  result << std::endl;
+  return result.str();
 }
