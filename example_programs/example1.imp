@@ -45,7 +45,6 @@ IN
   READ m;
   READ n;
   de(m,n,x,y,nwd);
-  WRITE m;
   WRITE x;
   WRITE y;
   WRITE nwd;

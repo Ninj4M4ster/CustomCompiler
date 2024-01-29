@@ -1,4 +1,8 @@
-# Opis plików
+# Kompilator
+
+#### Autor - Jakub Drzewiecki, 268418
+
+## Opis plików
 
 ### *code_generator*
 
@@ -38,7 +42,7 @@ w proramie wejściowym oraz przekazywaniu informacji do kompilatora.
 
 ## Kompilacja i uruchamianie
 
-Kompilator `compiler` skompilować można wywołując w terminalu polecenie `make -f Makefile`
+Kompilator `compiler` skompilować można wywołując w terminalu polecenie `make`
 
 Kompilator uruchomić można poleceniem: 
 `./kompilator <nazwa pliku wejsciowego> <nazwa pliku wyjsciowego>`
