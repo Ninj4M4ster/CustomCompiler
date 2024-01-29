@@ -345,7 +345,6 @@ VariableContainer *Compiler::getVariable(std::string variable_name, size_t index
   if(sym->type == symbol_type::ARR && (sym->length <= index || index < 0)) {
     throw std::runtime_error("Error at line " + std::to_string(line_number) + ": array index out of bounds.");
   }
-  // TODO(Jakub Drzewiecki): Add checking procedure array arguments bounds
   Array * arr = new Array;
   arr->type = variable_type::ARR;
   arr->var_name = variable_name;
@@ -435,7 +434,6 @@ Symbol Compiler::createSymbol(std::string symbol_name, enum symbol_type type) {
   return new_symbol;
 }
 
-// TODO(Jakub Drzewiecki): Set symbols start indexes at next powers of 2 (if there are less than 64)
 void Compiler::setSymbolBounds(Symbol & symbol, size_t mem_len, int line_number) {
   if(mem_len <= 0) {  // illegal array size
     throw std::runtime_error("Error at line " + std::to_string(line_number)

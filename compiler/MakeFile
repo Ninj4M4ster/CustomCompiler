@@ -1,6 +1,8 @@
 FLAGS = -std=c++17 -O3
 
-compiler: lexer.o parser.o code_generator.o symbol_table.o compiler.o
+all: kompilator
+
+kompilator: lexer.o parser.o code_generator.o symbol_table.o compiler.o
 	$(CXX) $^ -o $@
 	strip $@
 
@@ -14,4 +16,4 @@ parser.cpp parser.h: parser.y
 	bison -Wall -d -o parser.cpp $^
 
 clean:
-	rm -f *.o parser.cpp parser.hpp lexer.cpp compiler
+	rm -f *.o parser.cpp parser.hpp lexer.cpp kompilator
