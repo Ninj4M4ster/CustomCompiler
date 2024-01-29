@@ -813,7 +813,6 @@ void CodeGenerator::handleWriteCommand(WriteCommand *command, std::shared_ptr<Gr
     loadVariable(command->written_value_, accumulator_, node, false);
   } else {
     reg->currently_used_ = true;
-    std::cout << reg->curr_variable->stringify() << std::endl;
     if(reg->register_name_ != "a") {
       moveAccumulatorToFreeRegister(node);
       node->code_list_.push_back("GET " + reg->register_name_ + " # " + reg->curr_variable->stringify());
