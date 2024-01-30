@@ -149,7 +149,6 @@ void CodeGenerator::generateCodePreorder(std::shared_ptr<GraphNode> node) {
       handleProcedureCallCommand(procedure_call_command, node);
     }
     current_start_line_ += node->code_list_.size() - code_length_before_command;
-//    std::cout << stringifyRegistersState();
   }
   std::vector<std::shared_ptr<Register>> saved_regs;
   if(node->cond) {
@@ -769,17 +768,23 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
     prepared_registers.push_back(reg_with_var);
   }
   // store accumulator variable last in vector
-  if(variable_needed_in_accumulator) {
-    if((accumulator_->curr_variable &&
-    accumulator_->curr_variable->stringify() != variable_needed_in_accumulator->stringify()) ||
-    !accumulator_->curr_variable)
-      loadVariable(variable_needed_in_accumulator, accumulator_, node, use_saved_variables);
-    prepared_registers.push_back(accumulator_);
-  }
+  std::vector<std::shared_ptr<Register>> prepared_free_regs;
   for(int i = 0; i < command->expression_->neededEmptyRegs(); i++) {
     std::shared_ptr<Register> free_reg = findFreeRegister(node);
     free_reg->currently_used_ = true;
-    prepared_registers.push_back(free_reg);
+    prepared_free_regs.push_back(free_reg);
+  }
+  if(variable_needed_in_accumulator) {
+    if((accumulator_->curr_variable &&
+    accumulator_->curr_variable->stringify() != variable_needed_in_accumulator->stringify()) ||
+    !accumulator_->curr_variable) {
+      loadVariable(variable_needed_in_accumulator, accumulator_, node, use_saved_variables);
+    }
+
+    prepared_registers.push_back(accumulator_);
+  }
+  for(auto reg : prepared_free_regs) {
+    prepared_registers.push_back(reg);
   }
   long long int code_length_after_preparation = node->code_list_.size();
   std::vector<std::string> generated_commands =
@@ -789,8 +794,39 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
   auto reg_with_result = command->expression_->updateRegistersState(prepared_registers);
   if(!reg_with_result)
     reg_with_result = accumulator_;
+
   reg_with_result->curr_variable = command->left_var_;
   reg_with_result->variable_saved_ = false;
+  if(reg_with_result->register_name_ != "a") {
+    if(accumulator_->curr_variable && accumulator_->curr_variable->stringify() == command->left_var_->stringify()) {
+      accumulator_->curr_variable = nullptr;
+      accumulator_->variable_saved_ = true;
+    }
+  }
+  if(command->left_var_->type != variable_type::R_VAL) {
+    for(auto reg : registers_) {
+      if(reg->register_name_ == reg_with_result->register_name_)
+        continue;
+      if(reg->curr_variable && reg->curr_variable->type == command->left_var_->type &&
+          reg->curr_variable->getVariableName() == command->left_var_->getVariableName() &&
+          reg->curr_variable->getValue() == command->left_var_->getValue() &&
+          reg->curr_variable->getIndexVariableName() == command->left_var_->getIndexVariableName()) {
+        reg->curr_variable = nullptr;
+        reg->variable_saved_ = true;
+        reg->currently_used_ = false;
+      }
+    }
+  }
+  if(command->left_var_->type == variable_type::VAR) {
+    for (auto reg : registers_) {
+      if(reg->curr_variable && reg->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
+          reg->curr_variable->getIndexVariableName() == command->left_var_->getVariableName()) {
+        reg->curr_variable = nullptr;
+        reg->variable_saved_ = true;
+      }
+    }
+  }
+
   for(auto reg : registers_) {
     reg->currently_used_ = false;
   }
@@ -802,29 +838,6 @@ void CodeGenerator::handleAssignmentCommand(AssignmentCommand *command, std::sha
   saveRegisterAfterAssignmentIfNeeded(command, reg_with_result, node);
   // update variables in rest of registers
   // save variable indexed arrays since such value cannot be kept in registers, no chance of saving them later
-  if(command->left_var_->type != variable_type::R_VAL) {
-    for(auto reg : registers_) {
-      if(reg->register_name_ == reg_with_result->register_name_)
-        continue;
-      if(reg->curr_variable && reg->curr_variable->type == command->left_var_->type &&
-      reg->curr_variable->getVariableName() == command->left_var_->getVariableName() &&
-      reg->curr_variable->getValue() == command->left_var_->getValue() &&
-      reg->curr_variable->getIndexVariableName() == command->left_var_->getIndexVariableName()) {
-        reg->curr_variable = nullptr;
-        reg->variable_saved_ = true;
-        reg->currently_used_ = false;
-      }
-    }
-  }
-  if(command->left_var_->type == variable_type::VAR) {
-    for (auto reg : registers_) {
-      if(reg->curr_variable && reg->curr_variable->type == variable_type::VARIABLE_INDEXED_ARR &&
-      reg->curr_variable->getIndexVariableName() == command->left_var_->getVariableName()) {
-        reg->curr_variable = nullptr;
-        reg->variable_saved_ = true;
-      }
-    }
-  }
 }
 
 void CodeGenerator::handleReadCommand(ReadCommand *command, std::shared_ptr<GraphNode> node) {
@@ -832,6 +845,9 @@ void CodeGenerator::handleReadCommand(ReadCommand *command, std::shared_ptr<Grap
   node->code_list_.push_back("READ");
   accumulator_->curr_variable = command->var_;
   accumulator_->variable_saved_ = false;
+  AssignmentCommand * assignment_command = new AssignmentCommand;
+  assignment_command->left_var_ = command->var_;
+  saveRegisterAfterAssignmentIfNeeded(assignment_command, accumulator_, node);
   for(auto reg : registers_) {
     if(reg->curr_variable && reg->curr_variable->stringify() == command->var_->stringify()) {
       reg->curr_variable = nullptr;
