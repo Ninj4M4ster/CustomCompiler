@@ -219,7 +219,10 @@ class PlusExpression : public DefaultExpression {
       std::shared_ptr<Register> acc = regs.at(0);
       std::vector<std::string> commands;
       for(int i = 0; i < right_var_->getValue(); i++) {
-        commands.push_back("INC " + acc->register_name_);
+        if(i == 0)
+          commands.push_back("INC " + acc->register_name_ +  + " # " + var_->stringify() + " + " + right_var_->stringify());
+        else
+          commands.push_back("INC " + acc->register_name_);
       }
       return commands;
     } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
@@ -227,12 +230,15 @@ class PlusExpression : public DefaultExpression {
       std::shared_ptr<Register> acc = regs.at(0);
       std::vector<std::string> commands;
       for(int i = 0; i < var_->getValue(); i++) {
-        commands.push_back("INC " + acc->register_name_);
+        if(i == 0)
+          commands.push_back("INC " + acc->register_name_ + " # " + var_->stringify() + " + " + right_var_->stringify());
+        else
+          commands.push_back("INC " + acc->register_name_);
       }
       return commands;
     }
     std::shared_ptr<Register> var_register = regs.at(0);
-    return {"ADD " + var_register->register_name_ + " # add " + var_->stringify() + " + " + right_var_->stringify()};
+    return {"ADD " + var_register->register_name_ + " # " + var_->stringify() + " + " + right_var_->stringify()};
   }
 
   int neededEmptyRegs() override {
@@ -269,9 +275,6 @@ class MinusExpression : public DefaultExpression {
     if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL &&
     numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
       return {{var_, true}};
-    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
-    numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
-      return {{right_var_, true}};
     }
     return {{right_var_, false}};
   }
@@ -280,9 +283,6 @@ class MinusExpression : public DefaultExpression {
     if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL &&
         numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
       return nullptr;
-    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
-        numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
-      return nullptr;
     }
     return var_;
   }
@@ -290,9 +290,6 @@ class MinusExpression : public DefaultExpression {
   bool accumulatorNeededForExpression() override {
     if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL &&
         numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
-      return false;
-    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
-        numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
       return false;
     }
     return true;
@@ -305,20 +302,15 @@ class MinusExpression : public DefaultExpression {
       std::shared_ptr<Register> acc = regs.at(0);
       std::vector<std::string> commands;
       for(int i = 0; i < right_var_->getValue(); i++) {
-        commands.push_back("DEC " + acc->register_name_);
-      }
-      return commands;
-    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
-        numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
-      std::shared_ptr<Register> acc = regs.at(0);
-      std::vector<std::string> commands;
-      for(int i = 0; i < var_->getValue(); i++) {
-        commands.push_back("DEC " + acc->register_name_);
+        if(i == 0)
+          commands.push_back("DEC " + acc->register_name_ + " # " + var_->stringify() + " - " + right_var_->stringify());
+        else
+          commands.push_back("DEC " + acc->register_name_);
       }
       return commands;
     }
     std::shared_ptr<Register> right_var_register = regs.at(0);
-    return {"SUB " + right_var_register->register_name_  + " # sub " + var_->stringify() + " - " + right_var_->stringify()};
+    return {"SUB " + right_var_register->register_name_  + " # " + var_->stringify() + " - " + right_var_->stringify()};
   }
 
   int neededEmptyRegs() override {
@@ -328,9 +320,6 @@ class MinusExpression : public DefaultExpression {
   std::shared_ptr<Register> updateRegistersState(std::vector<std::shared_ptr<Register>> registers) override {
     if(right_var_->type == variable_type::R_VAL && var_->type != variable_type::R_VAL &&
         numberGenerationCost(right_var_->getValue()) + 5 > right_var_->getValue()) {
-      return registers.at(0);
-    } else if(var_->type == variable_type::R_VAL && right_var_->type != variable_type::R_VAL &&
-        numberGenerationCost(var_->getValue()) + 5 > var_->getValue()) {
       return registers.at(0);
     }
     return registers.at(1);

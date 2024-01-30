@@ -391,7 +391,7 @@ VariableContainer *Compiler::checkVariableInitialization(VariableContainer *var,
   std::shared_ptr<Symbol> sym = current_symbol_table_->findSymbol(var->getVariableName());
   if(sym->type == symbol_type::VAR && !sym->initialized) {
     std::cout << "Warning at line " << std::to_string(line_number) << ": variable "
-                                 << var->getVariableName() << " is uninitialized\n";
+                                 << var->getVariableName() << " might be uninitialized\n";
   } else if(sym->type == symbol_type::PROC_ARGUMENT) {
     markProcedureArgumentNeedsInitialization(var->getVariableName());
   }

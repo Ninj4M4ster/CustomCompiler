@@ -1,0 +1,402 @@
+# test5 self-test only
+#
+# Operations:
+#  100 - Self-test bitwise operations
+#  999 - Exit
+
+PROCEDURE word_to_bits(T bits, int) IS
+  x
+IN
+  x := int;
+  bits[0] := x % 2; x := x / 2;
+  bits[1] := x % 2; x := x / 2;
+  bits[2] := x % 2; x := x / 2;
+  bits[3] := x % 2; x := x / 2;
+  bits[4] := x % 2; x := x / 2;
+  bits[5] := x % 2; x := x / 2;
+  bits[6] := x % 2; x := x / 2;
+  bits[7] := x % 2; x := x / 2;
+  bits[8] := x % 2; x := x / 2;
+  bits[9] := x % 2; x := x / 2;
+  bits[10] := x % 2; x := x / 2;
+  bits[11] := x % 2; x := x / 2;
+  bits[12] := x % 2; x := x / 2;
+  bits[13] := x % 2; x := x / 2;
+  bits[14] := x % 2; x := x / 2;
+  bits[15] := x % 2; x := x / 2;
+  bits[16] := x % 2; x := x / 2;
+  bits[17] := x % 2; x := x / 2;
+  bits[18] := x % 2; x := x / 2;
+  bits[19] := x % 2; x := x / 2;
+  bits[20] := x % 2; x := x / 2;
+  bits[21] := x % 2; x := x / 2;
+  bits[22] := x % 2; x := x / 2;
+  bits[23] := x % 2; x := x / 2;
+  bits[24] := x % 2; x := x / 2;
+  bits[25] := x % 2; x := x / 2;
+  bits[26] := x % 2; x := x / 2;
+  bits[27] := x % 2; x := x / 2;
+  bits[28] := x % 2; x := x / 2;
+  bits[29] := x % 2; x := x / 2;
+  bits[30] := x % 2; x := x / 2;
+  bits[31] := x % 2;
+END
+
+PROCEDURE bits_to_word(int, T bits) IS
+  x
+IN
+  x :=     bits[31]; x := x * 2;
+  x := x + bits[30]; x := x * 2;
+  x := x + bits[29]; x := x * 2;
+  x := x + bits[28]; x := x * 2;
+  x := x + bits[27]; x := x * 2;
+  x := x + bits[26]; x := x * 2;
+  x := x + bits[25]; x := x * 2;
+  x := x + bits[24]; x := x * 2;
+  x := x + bits[23]; x := x * 2;
+  x := x + bits[22]; x := x * 2;
+  x := x + bits[21]; x := x * 2;
+  x := x + bits[20]; x := x * 2;
+  x := x + bits[19]; x := x * 2;
+  x := x + bits[18]; x := x * 2;
+  x := x + bits[17]; x := x * 2;
+  x := x + bits[16]; x := x * 2;
+  x := x + bits[15]; x := x * 2;
+  x := x + bits[14]; x := x * 2;
+  x := x + bits[13]; x := x * 2;
+  x := x + bits[12]; x := x * 2;
+  x := x + bits[11]; x := x * 2;
+  x := x + bits[10]; x := x * 2;
+  x := x + bits[9]; x := x * 2;
+  x := x + bits[8]; x := x * 2;
+  x := x + bits[7]; x := x * 2;
+  x := x + bits[6]; x := x * 2;
+  x := x + bits[5]; x := x * 2;
+  x := x + bits[4]; x := x * 2;
+  x := x + bits[3]; x := x * 2;
+  x := x + bits[2]; x := x * 2;
+  x := x + bits[1]; x := x * 2;
+  x := x + bits[0]; int := x;
+END
+
+PROCEDURE rightrotate_bits(T out, T in, rot) IS
+  sidx
+IN
+  sidx :=  0 + rot; sidx := sidx % 32; out[ 0] := in[sidx];
+  sidx :=  1 + rot; sidx := sidx % 32; out[ 1] := in[sidx];
+  sidx :=  2 + rot; sidx := sidx % 32; out[ 2] := in[sidx];
+  sidx :=  3 + rot; sidx := sidx % 32; out[ 3] := in[sidx];
+  sidx :=  4 + rot; sidx := sidx % 32; out[ 4] := in[sidx];
+  sidx :=  5 + rot; sidx := sidx % 32; out[ 5] := in[sidx];
+  sidx :=  6 + rot; sidx := sidx % 32; out[ 6] := in[sidx];
+  sidx :=  7 + rot; sidx := sidx % 32; out[ 7] := in[sidx];
+  sidx :=  8 + rot; sidx := sidx % 32; out[ 8] := in[sidx];
+  sidx :=  9 + rot; sidx := sidx % 32; out[ 9] := in[sidx];
+  sidx := 10 + rot; sidx := sidx % 32; out[10] := in[sidx];
+  sidx := 11 + rot; sidx := sidx % 32; out[11] := in[sidx];
+  sidx := 12 + rot; sidx := sidx % 32; out[12] := in[sidx];
+  sidx := 13 + rot; sidx := sidx % 32; out[13] := in[sidx];
+  sidx := 14 + rot; sidx := sidx % 32; out[14] := in[sidx];
+  sidx := 15 + rot; sidx := sidx % 32; out[15] := in[sidx];
+  sidx := 16 + rot; sidx := sidx % 32; out[16] := in[sidx];
+  sidx := 17 + rot; sidx := sidx % 32; out[17] := in[sidx];
+  sidx := 18 + rot; sidx := sidx % 32; out[18] := in[sidx];
+  sidx := 19 + rot; sidx := sidx % 32; out[19] := in[sidx];
+  sidx := 20 + rot; sidx := sidx % 32; out[20] := in[sidx];
+  sidx := 21 + rot; sidx := sidx % 32; out[21] := in[sidx];
+  sidx := 22 + rot; sidx := sidx % 32; out[22] := in[sidx];
+  sidx := 23 + rot; sidx := sidx % 32; out[23] := in[sidx];
+  sidx := 24 + rot; sidx := sidx % 32; out[24] := in[sidx];
+  sidx := 25 + rot; sidx := sidx % 32; out[25] := in[sidx];
+  sidx := 26 + rot; sidx := sidx % 32; out[26] := in[sidx];
+  sidx := 27 + rot; sidx := sidx % 32; out[27] := in[sidx];
+  sidx := 28 + rot; sidx := sidx % 32; out[28] := in[sidx];
+  sidx := 29 + rot; sidx := sidx % 32; out[29] := in[sidx];
+  sidx := 30 + rot; sidx := sidx % 32; out[30] := in[sidx];
+  sidx := 31 + rot; sidx := sidx % 32; out[31] := in[sidx];
+END
+
+PROCEDURE rightshift_bits(T out, T in, rot) IS
+  sidx, didx
+IN
+  didx := 0;
+  REPEAT
+    sidx := didx + rot;
+    out[didx] := in[sidx];
+    didx := didx + 1;
+  UNTIL sidx = 31;
+  WHILE didx < 32 DO
+    out[didx] := 0;
+    didx := didx + 1;
+  ENDWHILE
+END
+
+# Perform a ^= b in bits form
+PROCEDURE bits_xor(T bitsa, T bitsb) IS
+IN
+  bitsa[0] := bitsa[0] + bitsb[0]; bitsa[0] := bitsa[0] % 2;
+  bitsa[1] := bitsa[1] + bitsb[1]; bitsa[1] := bitsa[1] % 2;
+  bitsa[2] := bitsa[2] + bitsb[2]; bitsa[2] := bitsa[2] % 2;
+  bitsa[3] := bitsa[3] + bitsb[3]; bitsa[3] := bitsa[3] % 2;
+  bitsa[4] := bitsa[4] + bitsb[4]; bitsa[4] := bitsa[4] % 2;
+  bitsa[5] := bitsa[5] + bitsb[5]; bitsa[5] := bitsa[5] % 2;
+  bitsa[6] := bitsa[6] + bitsb[6]; bitsa[6] := bitsa[6] % 2;
+  bitsa[7] := bitsa[7] + bitsb[7]; bitsa[7] := bitsa[7] % 2;
+  bitsa[8] := bitsa[8] + bitsb[8]; bitsa[8] := bitsa[8] % 2;
+  bitsa[9] := bitsa[9] + bitsb[9]; bitsa[9] := bitsa[9] % 2;
+  bitsa[10] := bitsa[10] + bitsb[10]; bitsa[10] := bitsa[10] % 2;
+  bitsa[11] := bitsa[11] + bitsb[11]; bitsa[11] := bitsa[11] % 2;
+  bitsa[12] := bitsa[12] + bitsb[12]; bitsa[12] := bitsa[12] % 2;
+  bitsa[13] := bitsa[13] + bitsb[13]; bitsa[13] := bitsa[13] % 2;
+  bitsa[14] := bitsa[14] + bitsb[14]; bitsa[14] := bitsa[14] % 2;
+  bitsa[15] := bitsa[15] + bitsb[15]; bitsa[15] := bitsa[15] % 2;
+  bitsa[16] := bitsa[16] + bitsb[16]; bitsa[16] := bitsa[16] % 2;
+  bitsa[17] := bitsa[17] + bitsb[17]; bitsa[17] := bitsa[17] % 2;
+  bitsa[18] := bitsa[18] + bitsb[18]; bitsa[18] := bitsa[18] % 2;
+  bitsa[19] := bitsa[19] + bitsb[19]; bitsa[19] := bitsa[19] % 2;
+  bitsa[20] := bitsa[20] + bitsb[20]; bitsa[20] := bitsa[20] % 2;
+  bitsa[21] := bitsa[21] + bitsb[21]; bitsa[21] := bitsa[21] % 2;
+  bitsa[22] := bitsa[22] + bitsb[22]; bitsa[22] := bitsa[22] % 2;
+  bitsa[23] := bitsa[23] + bitsb[23]; bitsa[23] := bitsa[23] % 2;
+  bitsa[24] := bitsa[24] + bitsb[24]; bitsa[24] := bitsa[24] % 2;
+  bitsa[25] := bitsa[25] + bitsb[25]; bitsa[25] := bitsa[25] % 2;
+  bitsa[26] := bitsa[26] + bitsb[26]; bitsa[26] := bitsa[26] % 2;
+  bitsa[27] := bitsa[27] + bitsb[27]; bitsa[27] := bitsa[27] % 2;
+  bitsa[28] := bitsa[28] + bitsb[28]; bitsa[28] := bitsa[28] % 2;
+  bitsa[29] := bitsa[29] + bitsb[29]; bitsa[29] := bitsa[29] % 2;
+  bitsa[30] := bitsa[30] + bitsb[30]; bitsa[30] := bitsa[30] % 2;
+  bitsa[31] := bitsa[31] + bitsb[31]; bitsa[31] := bitsa[31] % 2;
+END
+
+# Perform a &= b in bits form
+PROCEDURE bits_and(T bitsa, T bitsb) IS
+IN
+  bitsa[ 0] := bitsa[ 0] * bitsb[ 0];
+  bitsa[ 1] := bitsa[ 1] * bitsb[ 1];
+  bitsa[ 2] := bitsa[ 2] * bitsb[ 2];
+  bitsa[ 3] := bitsa[ 3] * bitsb[ 3];
+  bitsa[ 4] := bitsa[ 4] * bitsb[ 4];
+  bitsa[ 5] := bitsa[ 5] * bitsb[ 5];
+  bitsa[ 6] := bitsa[ 6] * bitsb[ 6];
+  bitsa[ 7] := bitsa[ 7] * bitsb[ 7];
+  bitsa[ 8] := bitsa[ 8] * bitsb[ 8];
+  bitsa[ 9] := bitsa[ 9] * bitsb[ 9];
+  bitsa[10] := bitsa[10] * bitsb[10];
+  bitsa[11] := bitsa[11] * bitsb[11];
+  bitsa[12] := bitsa[12] * bitsb[12];
+  bitsa[13] := bitsa[13] * bitsb[13];
+  bitsa[14] := bitsa[14] * bitsb[14];
+  bitsa[15] := bitsa[15] * bitsb[15];
+  bitsa[16] := bitsa[16] * bitsb[16];
+  bitsa[17] := bitsa[17] * bitsb[17];
+  bitsa[18] := bitsa[18] * bitsb[18];
+  bitsa[19] := bitsa[19] * bitsb[19];
+  bitsa[20] := bitsa[20] * bitsb[20];
+  bitsa[21] := bitsa[21] * bitsb[21];
+  bitsa[22] := bitsa[22] * bitsb[22];
+  bitsa[23] := bitsa[23] * bitsb[23];
+  bitsa[24] := bitsa[24] * bitsb[24];
+  bitsa[25] := bitsa[25] * bitsb[25];
+  bitsa[26] := bitsa[26] * bitsb[26];
+  bitsa[27] := bitsa[27] * bitsb[27];
+  bitsa[28] := bitsa[28] * bitsb[28];
+  bitsa[29] := bitsa[29] * bitsb[29];
+  bitsa[30] := bitsa[30] * bitsb[30];
+  bitsa[31] := bitsa[31] * bitsb[31];
+END
+
+# Perform a = ~a in bits form
+PROCEDURE bits_neg(T bitsa) IS
+IN
+  bitsa[ 0] := 1 - bitsa[ 0];
+  bitsa[ 1] := 1 - bitsa[ 1];
+  bitsa[ 2] := 1 - bitsa[ 2];
+  bitsa[ 3] := 1 - bitsa[ 3];
+  bitsa[ 4] := 1 - bitsa[ 4];
+  bitsa[ 5] := 1 - bitsa[ 5];
+  bitsa[ 6] := 1 - bitsa[ 6];
+  bitsa[ 7] := 1 - bitsa[ 7];
+  bitsa[ 8] := 1 - bitsa[ 8];
+  bitsa[ 9] := 1 - bitsa[ 9];
+  bitsa[10] := 1 - bitsa[10];
+  bitsa[11] := 1 - bitsa[11];
+  bitsa[12] := 1 - bitsa[12];
+  bitsa[13] := 1 - bitsa[13];
+  bitsa[14] := 1 - bitsa[14];
+  bitsa[15] := 1 - bitsa[15];
+  bitsa[16] := 1 - bitsa[16];
+  bitsa[17] := 1 - bitsa[17];
+  bitsa[18] := 1 - bitsa[18];
+  bitsa[19] := 1 - bitsa[19];
+  bitsa[20] := 1 - bitsa[20];
+  bitsa[21] := 1 - bitsa[21];
+  bitsa[22] := 1 - bitsa[22];
+  bitsa[23] := 1 - bitsa[23];
+  bitsa[24] := 1 - bitsa[24];
+  bitsa[25] := 1 - bitsa[25];
+  bitsa[26] := 1 - bitsa[26];
+  bitsa[27] := 1 - bitsa[27];
+  bitsa[28] := 1 - bitsa[28];
+  bitsa[29] := 1 - bitsa[29];
+  bitsa[30] := 1 - bitsa[30];
+  bitsa[31] := 1 - bitsa[31];
+END
+
+# Perform a = b in bits form
+PROCEDURE bits_copy(T bitsa, T bitsb) IS
+IN
+  bitsa[ 0] := bitsb[ 0];
+  bitsa[ 1] := bitsb[ 1];
+  bitsa[ 2] := bitsb[ 2];
+  bitsa[ 3] := bitsb[ 3];
+  bitsa[ 4] := bitsb[ 4];
+  bitsa[ 5] := bitsb[ 5];
+  bitsa[ 6] := bitsb[ 6];
+  bitsa[ 7] := bitsb[ 7];
+  bitsa[ 8] := bitsb[ 8];
+  bitsa[ 9] := bitsb[ 9];
+  bitsa[10] := bitsb[10];
+  bitsa[11] := bitsb[11];
+  bitsa[12] := bitsb[12];
+  bitsa[13] := bitsb[13];
+  bitsa[14] := bitsb[14];
+  bitsa[15] := bitsb[15];
+  bitsa[16] := bitsb[16];
+  bitsa[17] := bitsb[17];
+  bitsa[18] := bitsb[18];
+  bitsa[19] := bitsb[19];
+  bitsa[20] := bitsb[20];
+  bitsa[21] := bitsb[21];
+  bitsa[22] := bitsb[22];
+  bitsa[23] := bitsb[23];
+  bitsa[24] := bitsb[24];
+  bitsa[25] := bitsb[25];
+  bitsa[26] := bitsb[26];
+  bitsa[27] := bitsb[27];
+  bitsa[28] := bitsb[28];
+  bitsa[29] := bitsb[29];
+  bitsa[30] := bitsb[30];
+  bitsa[31] := bitsb[31];
+END
+
+PROCEDURE self_test(_) IS
+  a, b,
+  axorb, aandb, nota, arotateb, ashiftb, acopy,
+  abits[32], bbits[32], tbits[32]
+IN
+  READ a;
+  READ b;
+  
+  # bbits should not change!
+  word_to_bits(bbits, b);
+
+  # bits_xor is a-destructive
+  word_to_bits(abits, a);
+  bits_xor(abits, bbits);
+  bits_to_word(axorb, abits);
+
+  # bits_and is a-destructive
+  word_to_bits(abits, a);
+  bits_and(abits, bbits);
+  bits_to_word(aandb, abits);
+
+  # bits_neg is a-destructive
+  word_to_bits(abits, a);
+  bits_neg(abits);
+  bits_to_word(nota, abits);
+
+  # the rest is non-destructive
+  word_to_bits(abits, a);
+  rightrotate_bits(tbits, abits, b);
+  bits_to_word(arotateb, tbits);
+  rightshift_bits(tbits, abits, b);
+  bits_to_word(ashiftb, tbits);
+  bits_copy(tbits, abits);
+  bits_to_word(acopy, tbits);
+
+  WRITE axorb;
+  WRITE aandb;
+  WRITE nota;
+  WRITE arotateb;
+  WRITE ashiftb;
+  WRITE acopy;
+END
+
+PROGRAM IS
+  state[8], k[64], op, block[16]
+IN
+  # Initialize const table
+  k[0] := 1116352408;
+  k[1] := 1899447441;
+  k[2] := 3049323471;
+  k[3] := 3921009573;
+  k[4] := 961987163;
+  k[5] := 1508970993;
+  k[6] := 2453635748;
+  k[7] := 2870763221;
+  k[8] := 3624381080;
+  k[9] := 310598401;
+  k[10] := 607225278;
+  k[11] := 1426881987;
+  k[12] := 1925078388;
+  k[13] := 2162078206;
+  k[14] := 2614888103;
+  k[15] := 3248222580;
+  k[16] := 3835390401;
+  k[17] := 4022224774;
+  k[18] := 264347078;
+  k[19] := 604807628;
+  k[20] := 770255983;
+  k[21] := 1249150122;
+  k[22] := 1555081692;
+  k[23] := 1996064986;
+  k[24] := 2554220882;
+  k[25] := 2821834349;
+  k[26] := 2952996808;
+  k[27] := 3210313671;
+  k[28] := 3336571891;
+  k[29] := 3584528711;
+  k[30] := 113926993;
+  k[31] := 338241895;
+  k[32] := 666307205;
+  k[33] := 773529912;
+  k[34] := 1294757372;
+  k[35] := 1396182291;
+  k[36] := 1695183700;
+  k[37] := 1986661051;
+  k[38] := 2177026350;
+  k[39] := 2456956037;
+  k[40] := 2730485921;
+  k[41] := 2820302411;
+  k[42] := 3259730800;
+  k[43] := 3345764771;
+  k[44] := 3516065817;
+  k[45] := 3600352804;
+  k[46] := 4094571909;
+  k[47] := 275423344;
+  k[48] := 430227734;
+  k[49] := 506948616;
+  k[50] := 659060556;
+  k[51] := 883997877;
+  k[52] := 958139571;
+  k[53] := 1322822218;
+  k[54] := 1537002063;
+  k[55] := 1747873779;
+  k[56] := 1955562222;
+  k[57] := 2024104815;
+  k[58] := 2227730452;
+  k[59] := 2361852424;
+  k[60] := 2428436474;
+  k[61] := 2756734187;
+  k[62] := 3204031479;
+  k[63] := 3329325298;
+
+  REPEAT
+    READ op;
+
+    IF op = 100 THEN
+      self_test(op);
+    ENDIF
+
+  UNTIL op = 999;
+END
